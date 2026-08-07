@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "../guards/ProtectedRoute";
 
 import WebsiteLayout from "../layouts/WebsiteLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -20,17 +21,27 @@ const AppRoutes = () => {
       </Route>
 
       {/*------------- Login-------------------------------------- */}
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Login />} />  
 
-      {/*------------------- Admin ---------------------------------*/}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route path="dashboard" element={<AdminDashboard />} />
-      </Route>
 
-      {/*------------------- Owner -----------------------------------*/}
-      <Route path="/owner" element={<OwnerLayout />}>
-        <Route path="dashboard" element={<OwnerDashboard />} />
-      </Route>
+
+
+  {/*------------------- Admin ---------------------------------*/}
+
+   {/* Protected Routes */}
+  <Route element={<ProtectedRoute />}>
+
+  {/* Admin */}
+  <Route path="/admin" element={<AdminLayout />}>
+    <Route path="dashboard" element={<AdminDashboard />} />
+  </Route>
+
+  {/* Owner */}
+  <Route path="/owner" element={<OwnerLayout />}>
+    <Route path="dashboard" element={<OwnerDashboard />} />
+  </Route>
+
+</Route>
 
       {/*---------------------------- 404 -------------------------------- */}
       <Route path="*" element={<NotFound />} />
