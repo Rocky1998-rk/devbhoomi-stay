@@ -11,20 +11,20 @@ const Login = () => {
         _id: "1",
         name: "Rocky Kumar",
         email: "rocky@gmail.com",
-        role: "admin",
+        role: "owner",
       },
       "demo-jwt-token"
     );
 
-    navigate("/admin/dashboard");
+    navigate("/owner/dashboard");
   };
 
   return (
     <div>
       <h1>Login Page</h1>
 
-      <button onClick={handleLogin} className="btn btn-primary border">
-        Login as Admin
+      <button onClick={handleLogin} className="btn btn-primary border flex items-center gap-2">
+        Login 
       </button>
     </div>
   );

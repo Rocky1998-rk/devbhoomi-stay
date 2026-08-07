@@ -1,9 +1,13 @@
 import { Routes, Route } from "react-router-dom";
-import ProtectedRoute from "../guards/ProtectedRoute";
+import Unauthorized from "../pages/errors/Unauthorized";
 
 import WebsiteLayout from "../layouts/WebsiteLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import OwnerLayout from "../layouts/OwnerLayout";
+
+import ProtectedRoute from "../guards/ProtectedRoute";
+import AdminRoute from "../guards/AdminRoute";
+import OwnerRoute from "../guards/OwnerRoute";
 
 import Home from "../pages/website/Home";
 import Login from "../pages/auth/Login";
@@ -23,27 +27,30 @@ const AppRoutes = () => {
       {/*------------- Login-------------------------------------- */}
       <Route path="/login" element={<Login />} />  
 
-
-
-
   {/*------------------- Admin ---------------------------------*/}
 
-   {/* Protected Routes */}
-  <Route element={<ProtectedRoute />}>
+  {/* Protected Routes */}
+<Route element={<ProtectedRoute />}>
 
-  {/* Admin */}
-  <Route path="/admin" element={<AdminLayout />}>
-    <Route path="dashboard" element={<AdminDashboard />} />
+  {/* Admin Routes */}
+  <Route element={<AdminRoute />}>
+    <Route path="/admin" element={<AdminLayout />}>
+      <Route path="dashboard" element={<AdminDashboard />} />
+    </Route>
   </Route>
 
-  {/* Owner */}
-  <Route path="/owner" element={<OwnerLayout />}>
-    <Route path="dashboard" element={<OwnerDashboard />} />
+  {/* Owner Routes */}
+  <Route element={<OwnerRoute />}>
+    <Route path="/owner" element={<OwnerLayout />}>
+      <Route path="dashboard" element={<OwnerDashboard />} />
+    </Route>
   </Route>
 
 </Route>
 
+
       {/*---------------------------- 404 -------------------------------- */}
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="*" element={<NotFound />} />
 
     </Routes>
