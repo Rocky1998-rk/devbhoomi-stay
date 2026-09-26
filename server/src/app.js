@@ -10,6 +10,8 @@ import roomRoutes from "./routes/adminRoomRoutes.js";
 import ownerRoomRoutes from "./routes/ownerRoomRoutes.js";
 import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import ownerRoomPricingRoutes from "./routes/ownerRoomPricingRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
+import whatsappRoutes from "./routes/whatsappRoutes.js";
 
 const app = express();
 
@@ -47,5 +49,7 @@ app.use("/api/admin", roomRoutes);
 app.use("/api/owner/rooms", ownerRoomRoutes);
 app.use("/api/owner/room-categories",roomCategoryRoutes);
 app.use("/api/owner",ownerRoomPricingRoutes);
+app.use("/api/owner/bookings", bookingRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 
 export default app;

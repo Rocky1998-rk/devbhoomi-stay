@@ -22,16 +22,30 @@ const roomSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Operational / manual availability
     isAvailable: {
       type: Boolean,
       default: true,
       index: true,
     },
 
+    // Room active/inactive status
     isActive: {
       type: Boolean,
       default: true,
       index: true,
+    },
+
+    // Temporary lock used while creating a booking
+    bookingLock: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    bookingLockAt: {
+      type: Date,
+      default: null,
     },
   },
   {
