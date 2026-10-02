@@ -60,6 +60,18 @@ const hotelSchema = new mongoose.Schema(
       trim: true,
     },
 
+    hotelType: {
+  type: String,
+  enum: [
+    "Budget Hotel",
+    "Deluxe Hotel",
+    "Luxury Hotel",
+    "Homestay",
+  ],
+  default: null,
+  index: true,
+},
+
     // Hotel Images
     images: [
       {
@@ -67,6 +79,26 @@ const hotelSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+
+    coverImage: {
+    type: String,
+    default: null,
+    },
+
+    latitude: {
+    type: Number,
+    default: null,
+    },
+
+   longitude: {
+  type: Number,
+  default: null,
+  },
+
+   googleMapsUrl: {
+  type: String,
+  default: null,
+  },
 
     // Hotel Facilities
     amenities: [

@@ -15,8 +15,9 @@ export const getOwnerHotel = async (ownerId) => {
   return hotel;
 };
 
-
-// ========================= Update Owner's Hotel =========================
+// =========================
+// Update Owner's Hotel
+// =========================
 
 export const updateOwnerHotel = async (ownerId, updateData) => {
   const allowedFields = [
@@ -32,6 +33,7 @@ export const updateOwnerHotel = async (ownerId, updateData) => {
     "amenities",
     "checkInTime",
     "checkOutTime",
+    "hotelType", // ADD THIS
   ];
 
   const filteredData = {};

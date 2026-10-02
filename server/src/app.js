@@ -12,12 +12,19 @@ import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import ownerRoomPricingRoutes from "./routes/ownerRoomPricingRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import whatsappRoutes from "./routes/whatsappRoutes.js";
+import razorpayRoutes from "./routes/razorpayRoutes.js";
 
 const app = express();
 
 // ========================= Middlewares =========================
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = Buffer.from(buf);
+    },
+  })
+);
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -45,11 +52,13 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/admin/hotels", hotelRoutes);
 app.use("/api/owner/hotel", ownerHotelRoutes);
+app.use("/api/owner/hotels", ownerHotelRoutes);
 app.use("/api/admin", roomRoutes);
 app.use("/api/owner/rooms", ownerRoomRoutes);
 app.use("/api/owner/room-categories",roomCategoryRoutes);
 app.use("/api/owner",ownerRoomPricingRoutes);
 app.use("/api/owner/bookings", bookingRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
+app.use("/api/razorpay",razorpayRoutes);
 
 export default app;

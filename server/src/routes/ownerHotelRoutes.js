@@ -1,20 +1,64 @@
 import express from "express";
 
 import authMiddleware from "../middleware/authMiddleware.js";
+
 import ownerMiddleware from "../middleware/ownerMiddleware.js";
-import {getMyHotel,updateMyHotel,} from "../controllers/ownerHotelController.js";
 
-const router = express.Router();
+import upload from "../middleware/uploadMiddleware.js";
 
+import {
+  getMyHotel,
+  updateMyHotel,
+  uploadHotelImagesController,
+} from "../controllers/ownerHotelController.js";
 
-// ========================= Get My Hotel =========================
+const router =
+  express.Router();
 
-router.get("/",authMiddleware,ownerMiddleware,getMyHotel);
+// =========================
+// Get My Hotel
+// =========================
 
+router.get(
+  "/",
+  authMiddleware,
+  ownerMiddleware,
+  getMyHotel
+);
 
-// ========================= Update My Hotel =========================
+// =========================
+// Update My Hotel
+// =========================
 
-router.put("/",authMiddleware,ownerMiddleware,updateMyHotel);
+router.put(
+  "/",
+  authMiddleware,
+  ownerMiddleware,
+  updateMyHotel
+);
 
+// =========================
+// Upload Hotel Images
+// =========================
+
+router.post(
+  "/:hotelId/images",
+  authMiddleware,
+  ownerMiddleware,
+
+  upload.fields([
+    {
+      name: "images",
+      maxCount: 10,
+    },
+
+    {
+      name: "coverImage",
+      maxCount: 1,
+    },
+  ]),
+
+  uploadHotelImagesController
+);
 
 export default router;

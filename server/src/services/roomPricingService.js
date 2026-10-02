@@ -3,493 +3,679 @@ import Room from "../models/Room.js";
 import Hotel from "../models/Hotel.js";
 
 // =========================
-// Create Room Pricing
+// Get Owner's Hotel By Room
 // =========================
 
-export const createRoomPricing = async (
+const getOwnedHotelByRoom = async (
   ownerId,
-  roomId,
-  pricingData
+  roomId
 ) => {
-  // =========================
-  // Find Owner's Active Hotel
-  // =========================
+  // ======================================
+  // Find Room
+  // ======================================
+
+  const room = await Room.findOne({
+    _id: roomId,
+    isActive: true,
+  });
+
+  if (!room) {
+    throw new Error(
+      "Room not found"
+    );
+  }
+
+  // ======================================
+  // Find Hotel Belonging To Owner
+  // ======================================
 
   const hotel = await Hotel.findOne({
+    _id: room.hotel,
     owner: ownerId,
     isActive: true,
   });
 
   if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
-
-  // =========================
-  // Check Room Ownership
-  // =========================
-
-  const room = await Room.findOne({
-    _id: roomId,
-    hotel: hotel._id,
-  });
-
-  if (!room) {
-    throw new Error("Room not found for this owner");
-  }
-
-  // =========================
-  // Get Pricing Data
-  // =========================
-
-  const {
-    pricingType,
-    name,
-    startDate,
-    endDate,
-    pricePerNight,
-  } = pricingData;
-
-  // =========================
-  // Required Fields
-  // =========================
-
-  if (
-    !pricingType ||
-    !name ||
-    !startDate ||
-    !endDate ||
-    pricePerNight === undefined
-  ) {
     throw new Error(
-      "Pricing type, name, dates and price are required"
+      "Room not found for this owner"
     );
   }
 
-  // =========================
-  // Validate Pricing Type
-  // =========================
-
-  if (
-    !["normal", "season", "blackout"].includes(
-      pricingType
-    )
-  ) {
-    throw new Error("Invalid pricing type");
-  }
-
-  // =========================
-  // Validate Dates
-  // =========================
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (
-    isNaN(start.getTime()) ||
-    isNaN(end.getTime())
-  ) {
-    throw new Error("Invalid pricing dates");
-  }
-
-  if (end < start) {
-    throw new Error(
-      "End date cannot be before start date"
-    );
-  }
-
-  // =========================
-  // Validate Price
-  // =========================
-
-  if (
-    typeof pricePerNight !== "number" ||
-    pricePerNight < 0
-  ) {
-    throw new Error(
-      "Price per night cannot be negative"
-    );
-  }
-
-  // =========================
-  // Automatic Priority
-  // =========================
-
-  let priority;
-
-  if (pricingType === "normal") {
-    priority = 1;
-  }
-
-  if (pricingType === "season") {
-    priority = 2;
-  }
-
-  if (pricingType === "blackout") {
-    priority = 3;
-  }
-
-  // =========================
-  // Same-Type Overlap Check
-  // =========================
-
-  const overlappingPricing =
-    await RoomPricing.findOne({
-      room: room._id,
-      pricingType,
-      isActive: true,
-
-      startDate: {
-        $lte: end,
-      },
-
-      endDate: {
-        $gte: start,
-      },
-    });
-
-  if (overlappingPricing) {
-    throw new Error(
-      `Overlapping ${pricingType} pricing already exists for this date range`
-    );
-  }
-
-  // =========================
-  // Create Pricing
-  // =========================
-
-  const pricing = await RoomPricing.create({
-    room: room._id,
-    hotel: hotel._id,
-    pricingType,
-    name: name.trim(),
-    startDate: start,
-    endDate: end,
-    pricePerNight,
-    priority,
-    isActive: true,
-  });
-
-  return pricing;
+  return {
+    room,
+    hotel,
+  };
 };
+
+// =========================
+// Find Owner's Hotel By Pricing
+// =========================
+
+const getOwnedHotelByPricing =
+  async (
+    ownerId,
+    pricingId
+  ) => {
+    // ======================================
+    // Find Pricing
+    // ======================================
+
+    const pricing =
+      await RoomPricing.findOne({
+        _id: pricingId,
+      });
+
+    if (!pricing) {
+      throw new Error(
+        "Room pricing not found"
+      );
+    }
+
+    // ======================================
+    // Verify Hotel Ownership
+    // ======================================
+
+    const hotel =
+      await Hotel.findOne({
+        _id: pricing.hotel,
+        owner: ownerId,
+        isActive: true,
+      });
+
+    if (!hotel) {
+      throw new Error(
+        "Room pricing not found for this owner"
+      );
+    }
+
+    return {
+      pricing,
+      hotel,
+    };
+  };
+
+// =========================
+// Create Room Pricing
+// =========================
+
+export const createRoomPricing =
+  async (
+    ownerId,
+    roomId,
+    pricingData
+  ) => {
+    // ======================================
+    // Find Correct Hotel Through Room
+    // ======================================
+
+    const {
+      room,
+      hotel,
+    } = await getOwnedHotelByRoom(
+      ownerId,
+      roomId
+    );
+
+    // =========================
+    // Get Pricing Data
+    // =========================
+
+    const {
+      pricingType,
+      name,
+      startDate,
+      endDate,
+      pricePerNight,
+    } = pricingData;
+
+    // =========================
+    // Required Fields
+    // =========================
+
+    if (
+      !pricingType ||
+      !name ||
+      !startDate ||
+      !endDate ||
+      pricePerNight ===
+        undefined
+    ) {
+      throw new Error(
+        "Pricing type, name, dates and price are required"
+      );
+    }
+
+    // =========================
+    // Validate Pricing Type
+    // =========================
+
+    if (
+      ![
+        "normal",
+        "season",
+        "blackout",
+      ].includes(pricingType)
+    ) {
+      throw new Error(
+        "Invalid pricing type"
+      );
+    }
+
+    // =========================
+    // Validate Dates
+    // =========================
+
+    const start =
+      new Date(startDate);
+
+    const end =
+      new Date(endDate);
+
+    if (
+      isNaN(start.getTime()) ||
+      isNaN(end.getTime())
+    ) {
+      throw new Error(
+        "Invalid pricing dates"
+      );
+    }
+
+    if (end < start) {
+      throw new Error(
+        "End date cannot be before start date"
+      );
+    }
+
+    // =========================
+    // Validate Price
+    // =========================
+
+    if (
+      typeof pricePerNight !==
+        "number" ||
+      pricePerNight < 0
+    ) {
+      throw new Error(
+        "Price per night cannot be negative"
+      );
+    }
+
+    // =========================
+    // Automatic Priority
+    // =========================
+
+    let priority;
+
+    if (
+      pricingType ===
+      "normal"
+    ) {
+      priority = 1;
+    }
+
+    if (
+      pricingType ===
+      "season"
+    ) {
+      priority = 2;
+    }
+
+    if (
+      pricingType ===
+      "blackout"
+    ) {
+      priority = 3;
+    }
+
+    // =========================
+    // Same-Type Overlap Check
+    // =========================
+
+    const overlappingPricing =
+      await RoomPricing.findOne({
+        room: room._id,
+        pricingType,
+        isActive: true,
+
+        startDate: {
+          $lte: end,
+        },
+
+        endDate: {
+          $gte: start,
+        },
+      });
+
+    if (overlappingPricing) {
+      throw new Error(
+        `Overlapping ${pricingType} pricing already exists for this date range`
+      );
+    }
+
+    // =========================
+    // Create Pricing
+    // =========================
+
+    const pricing =
+      await RoomPricing.create({
+        room: room._id,
+
+        hotel:
+          hotel._id,
+
+        pricingType,
+
+        name:
+          name.trim(),
+
+        startDate:
+          start,
+
+        endDate:
+          end,
+
+        pricePerNight,
+
+        priority,
+
+        isActive: true,
+      });
+
+    return pricing;
+  };
 
 // =========================
 // Get Room Pricing
 // =========================
 
-export const getRoomPricing = async (
-  ownerId,
-  roomId
-) => {
-  // =========================
-  // Find Owner's Active Hotel
-  // =========================
+export const getRoomPricing =
+  async (
+    ownerId,
+    roomId
+  ) => {
+    // ======================================
+    // Find Correct Hotel Through Room
+    // ======================================
 
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+    const {
+      room,
+      hotel,
+    } = await getOwnedHotelByRoom(
+      ownerId,
+      roomId
+    );
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    // ======================================
+    // Get Active Pricing
+    // ======================================
 
-  // =========================
-  // Check Room Ownership
-  // =========================
+    const pricing =
+      await RoomPricing.find({
+        room: room._id,
+        hotel: hotel._id,
+        isActive: true,
+      }).sort({
+        priority: -1,
+        startDate: 1,
+      });
 
-  const room = await Room.findOne({
-    _id: roomId,
-    hotel: hotel._id,
-  });
-
-  if (!room) {
-    throw new Error("Room not found for this owner");
-  }
-
-  // =========================
-  // Get Active Pricing
-  // =========================
-
-  const pricing = await RoomPricing.find({
-    room: room._id,
-    hotel: hotel._id,
-    isActive: true,
-  }).sort({
-    priority: -1,
-    startDate: 1,
-  });
-
-  return pricing;
-};
+    return pricing;
+  };
 
 // =========================
 // Activate Room Pricing
 // =========================
 
-export const activateRoomPricing = async (
-  ownerId,
-  pricingId
-) => {
-  // Find owner's active hotel
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const activateRoomPricing =
+  async (
+    ownerId,
+    pricingId
+  ) => {
+    const {
+      pricing,
+    } =
+      await getOwnedHotelByPricing(
+        ownerId,
+        pricingId
+      );
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    // ======================================
+    // Ensure Currently Inactive
+    // ======================================
 
-  // Find inactive pricing belonging to owner's hotel
-  const pricing = await RoomPricing.findOne({
-    _id: pricingId,
-    hotel: hotel._id,
-    isActive: false,
-  });
+    if (pricing.isActive) {
+      throw new Error(
+        "Room pricing not found or already active"
+      );
+    }
 
-  if (!pricing) {
-    throw new Error(
-      "Room pricing not found or already active"
-    );
-  }
+    // ======================================
+    // Activate Pricing
+    // ======================================
 
-  // Activate pricing
-  pricing.isActive = true;
+    pricing.isActive =
+      true;
 
-  await pricing.save();
+    await pricing.save();
 
-  return pricing;
-};
+    return pricing;
+  };
 
 // =========================
 // Deactivate Room Pricing
 // =========================
 
-export const deactivateRoomPricing = async (
-  ownerId,
-  pricingId
-) => {
-  // Find owner's active hotel
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const deactivateRoomPricing =
+  async (
+    ownerId,
+    pricingId
+  ) => {
+    const {
+      pricing,
+    } =
+      await getOwnedHotelByPricing(
+        ownerId,
+        pricingId
+      );
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    // ======================================
+    // Ensure Currently Active
+    // ======================================
 
-  // Find active pricing belonging to owner's hotel
-  const pricing = await RoomPricing.findOne({
-    _id: pricingId,
-    hotel: hotel._id,
-    isActive: true,
-  });
+    if (!pricing.isActive) {
+      throw new Error(
+        "Room pricing not found or already inactive"
+      );
+    }
 
-  if (!pricing) {
-    throw new Error(
-      "Room pricing not found or already inactive"
-    );
-  }
+    // ======================================
+    // Deactivate Pricing
+    // ======================================
 
-  // Deactivate pricing
-  pricing.isActive = false;
+    pricing.isActive =
+      false;
 
-  await pricing.save();
+    await pricing.save();
 
-  return pricing;
-};
+    return pricing;
+  };
 
 // =========================
 // Update Room Pricing
 // =========================
 
-export const updateRoomPricing = async (
-  ownerId,
-  pricingId,
-  pricingData
-) => {
-  // Find owner's active hotel
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const updateRoomPricing =
+  async (
+    ownerId,
+    pricingId,
+    pricingData
+  ) => {
+    const {
+      pricing,
+      hotel,
+    } =
+      await getOwnedHotelByPricing(
+        ownerId,
+        pricingId
+      );
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    const {
+      pricingType,
+      name,
+      startDate,
+      endDate,
+      pricePerNight,
+      priority,
+    } = pricingData;
 
-  // Find pricing belonging to owner's hotel
-  const pricing = await RoomPricing.findOne({
-    _id: pricingId,
-    hotel: hotel._id,
-  });
+    // =========================
+    // Validate Pricing Type
+    // =========================
 
-  if (!pricing) {
-    throw new Error("Room pricing not found for this owner");
-  }
+    if (
+      pricingType !==
+        undefined &&
+      ![
+        "normal",
+        "season",
+        "blackout",
+      ].includes(
+        pricingType
+      )
+    ) {
+      throw new Error(
+        "Invalid pricing type"
+      );
+    }
 
-  const {
-    pricingType,
-    name,
-    startDate,
-    endDate,
-    pricePerNight,
-    priority,
-  } = pricingData;
+    // =========================
+    // Final Values
+    // =========================
 
-  // Validate pricing type if provided
-  if (
-    pricingType !== undefined &&
-    !["normal", "season", "blackout"].includes(
-      pricingType
-    )
-  ) {
-    throw new Error("Invalid pricing type");
-  }
+    const finalPricingType =
+      pricingType !==
+      undefined
+        ? pricingType
+        : pricing.pricingType;
 
-  // Final values
-  const finalPricingType =
-    pricingType !== undefined
-      ? pricingType
-      : pricing.pricingType;
+    const finalName =
+      name !== undefined
+        ? name
+        : pricing.name;
 
-  const finalName =
-    name !== undefined ? name : pricing.name;
+    const finalStartDate =
+      startDate !== undefined
+        ? new Date(startDate)
+        : pricing.startDate;
 
-  const finalStartDate =
-    startDate !== undefined
-      ? new Date(startDate)
-      : pricing.startDate;
+    const finalEndDate =
+      endDate !== undefined
+        ? new Date(endDate)
+        : pricing.endDate;
 
-  const finalEndDate =
-    endDate !== undefined
-      ? new Date(endDate)
-      : pricing.endDate;
+    const finalPrice =
+      pricePerNight !==
+      undefined
+        ? pricePerNight
+        : pricing.pricePerNight;
 
-  const finalPrice =
-    pricePerNight !== undefined
-      ? pricePerNight
-      : pricing.pricePerNight;
+    const finalPriority =
+      priority !== undefined
+        ? priority
+        : pricing.priority;
 
-  const finalPriority =
-    priority !== undefined
-      ? priority
-      : pricing.priority;
+    // =========================
+    // Validate Dates
+    // =========================
 
-  // Validate dates
-  if (
-    isNaN(finalStartDate.getTime()) ||
-    isNaN(finalEndDate.getTime())
-  ) {
-    throw new Error("Invalid pricing dates");
-  }
+    if (
+      isNaN(
+        finalStartDate.getTime()
+      ) ||
+      isNaN(
+        finalEndDate.getTime()
+      )
+    ) {
+      throw new Error(
+        "Invalid pricing dates"
+      );
+    }
 
-  if (finalEndDate < finalStartDate) {
-    throw new Error(
-      "End date cannot be before start date"
-    );
-  }
+    if (
+      finalEndDate <
+      finalStartDate
+    ) {
+      throw new Error(
+        "End date cannot be before start date"
+      );
+    }
 
-  // Validate price
-  if (finalPrice < 0) {
-    throw new Error(
-      "Price per night cannot be negative"
-    );
-  }
+    // =========================
+    // Validate Price
+    // =========================
 
-  // Validate priority
-  if (finalPriority < 1) {
-    throw new Error("Priority must be at least 1");
-  }
+    if (
+      finalPrice < 0
+    ) {
+      throw new Error(
+        "Price per night cannot be negative"
+      );
+    }
 
-  // Check same-type overlapping pricing
-  // Exclude current pricing record
-  const overlappingPricing =
-    await RoomPricing.findOne({
-      _id: { $ne: pricing._id },
-      room: pricing.room,
-      hotel: hotel._id,
-      pricingType: finalPricingType,
-      isActive: true,
-      startDate: { $lte: finalEndDate },
-      endDate: { $gte: finalStartDate },
-    });
+    // =========================
+    // Validate Priority
+    // =========================
 
-  if (overlappingPricing) {
-    throw new Error(
-      `Overlapping ${finalPricingType} pricing already exists for this date range`
-    );
-  }
+    if (
+      finalPriority < 1
+    ) {
+      throw new Error(
+        "Priority must be at least 1"
+      );
+    }
 
-  // Update pricing
-  pricing.pricingType = finalPricingType;
-  pricing.name = finalName;
-  pricing.startDate = finalStartDate;
-  pricing.endDate = finalEndDate;
-  pricing.pricePerNight = finalPrice;
-  pricing.priority = finalPriority;
+    // =========================
+    // Same-Type Overlap Check
+    // =========================
 
-  await pricing.save();
+    const overlappingPricing =
+      await RoomPricing.findOne({
+        _id: {
+          $ne:
+            pricing._id,
+        },
 
-  return pricing;
-};
+        room:
+          pricing.room,
 
+        hotel:
+          hotel._id,
+
+        pricingType:
+          finalPricingType,
+
+        isActive: true,
+
+        startDate: {
+          $lte:
+            finalEndDate,
+        },
+
+        endDate: {
+          $gte:
+            finalStartDate,
+        },
+      });
+
+    if (overlappingPricing) {
+      throw new Error(
+        `Overlapping ${finalPricingType} pricing already exists for this date range`
+      );
+    }
+
+    // =========================
+    // Update Pricing
+    // =========================
+
+    pricing.pricingType =
+      finalPricingType;
+
+    pricing.name =
+      finalName;
+
+    pricing.startDate =
+      finalStartDate;
+
+    pricing.endDate =
+      finalEndDate;
+
+    pricing.pricePerNight =
+      finalPrice;
+
+    pricing.priority =
+      finalPriority;
+
+    await pricing.save();
+
+    return pricing;
+  };
 
 // =========================
 // Get Applicable Room Pricing
 // =========================
 
-export const getApplicableRoomPricing = async (
-  ownerId,
-  roomId,
-  bookingDate
-) => {
-  // Find owner's active hotel
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const getApplicableRoomPricing =
+  async (
+    ownerId,
+    roomId,
+    bookingDate
+  ) => {
+    // ======================================
+    // Find Correct Hotel Through Room
+    // ======================================
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
-
-  // Check room belongs to owner's hotel
-  const room = await Room.findOne({
-    _id: roomId,
-    hotel: hotel._id,
-    isActive: true,
-  });
-
-  if (!room) {
-    throw new Error("Room not found for this owner");
-  }
-
-  // Validate booking date
-  const date = new Date(bookingDate);
-
-  if (isNaN(date.getTime())) {
-    throw new Error("Invalid booking date");
-  }
-
-  // Find all active pricing applicable on booking date
-  const applicablePricing = await RoomPricing.find({
-    room: room._id,
-    hotel: hotel._id,
-    isActive: true,
-    startDate: { $lte: date },
-    endDate: { $gte: date },
-  }).sort({
-    priority: -1,
-  });
-
-  if (!applicablePricing.length) {
-    throw new Error(
-      "No applicable room pricing found for this date"
+    const {
+      room,
+      hotel,
+    } = await getOwnedHotelByRoom(
+      ownerId,
+      roomId
     );
-  }
 
-  // Highest priority pricing wins
-  return applicablePricing[0];
-};
+    // =========================
+    // Validate Booking Date
+    // =========================
+
+    const date =
+      new Date(
+        bookingDate
+      );
+
+    if (
+      isNaN(
+        date.getTime()
+      )
+    ) {
+      throw new Error(
+        "Invalid booking date"
+      );
+    }
+
+    // =========================
+    // Find Applicable Pricing
+    // =========================
+
+    const applicablePricing =
+      await RoomPricing.find({
+        room: room._id,
+
+        hotel:
+          hotel._id,
+
+        isActive: true,
+
+        startDate: {
+          $lte: date,
+        },
+
+        endDate: {
+          $gte: date,
+        },
+      }).sort({
+        priority: -1,
+      });
+
+    if (
+      !applicablePricing.length
+    ) {
+      throw new Error(
+        "No applicable room pricing found for this date"
+      );
+    }
+
+    // =========================
+    // Highest Priority Wins
+    // =========================
+
+    return applicablePricing[0];
+  };

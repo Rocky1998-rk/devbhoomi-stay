@@ -1,22 +1,25 @@
-
 import Booking from "../models/Booking.js";
 import Room from "../models/Room.js";
 import Hotel from "../models/Hotel.js";
-// import RoomCategory from "../models/RoomCategory.js";
+
 import {
   getApplicableRoomPricing,
 } from "./roomPricingService.js";
 
 // Temporary booking lock timeout
-
-const BOOKING_LOCK_TIMEOUT_MS = 2 * 60 * 1000;
+const BOOKING_LOCK_TIMEOUT_MS =
+  2 * 60 * 1000;
 
 // =========================
 // Create Booking
 // =========================
 
-export const createBooking = async (ownerId, bookingData) => {
+export const createBooking = async (
+  ownerId,
+  bookingData
+) => {
   const {
+    hotelId,
     roomId,
     guestName,
     guestPhone,
@@ -42,16 +45,65 @@ export const createBooking = async (ownerId, bookingData) => {
   }
 
   // =========================
-  // Find Owner's Active Hotel
+  // Find Hotel
   // =========================
 
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+  let hotel;
+
+  // WhatsApp / Direct Hotel Flow
+  if (hotelId) {
+    hotel = await Hotel.findOne({
+      _id: hotelId,
+      isActive: true,
+    });
+  }
+
+  // Existing Owner Flow
+  else {
+    if (!ownerId) {
+      throw new Error(
+        "Owner or hotel is required"
+      );
+    }
+
+    hotel = await Hotel.findOne({
+      owner: ownerId,
+      isActive: true,
+    });
+  }
 
   if (!hotel) {
-    throw new Error("Hotel not found for this owner");
+    throw new Error(
+      "Hotel not found"
+    );
+  }
+
+  // =========================
+  // Validate Owner Access
+  // =========================
+
+  if (
+    ownerId &&
+    hotel.owner &&
+    String(hotel.owner) !==
+      String(ownerId)
+  ) {
+    throw new Error(
+      "You are not authorized to create booking for this hotel"
+    );
+  }
+
+  // =========================
+  // Resolve Pricing Owner
+  // =========================
+
+  const pricingOwnerId =
+    hotel.owner || ownerId;
+
+  if (!pricingOwnerId) {
+    throw new Error(
+      "Hotel owner not found"
+    );
   }
 
   // =========================
@@ -65,7 +117,9 @@ export const createBooking = async (ownerId, bookingData) => {
   }).populate("roomCategory");
 
   if (!room) {
-    throw new Error("Room not found for this owner");
+    throw new Error(
+      "Room not found for this hotel"
+    );
   }
 
   // =========================
@@ -83,21 +137,28 @@ export const createBooking = async (ownerId, bookingData) => {
   // =========================
 
   if (!room.isAvailable) {
-    throw new Error("Room is currently unavailable");
+    throw new Error(
+      "Room is currently unavailable"
+    );
   }
 
   // =========================
   // Validate Dates
   // =========================
 
-  const startDate = new Date(checkIn);
-  const endDate = new Date(checkOut);
+  const startDate =
+    new Date(checkIn);
+
+  const endDate =
+    new Date(checkOut);
 
   if (
     isNaN(startDate.getTime()) ||
     isNaN(endDate.getTime())
   ) {
-    throw new Error("Invalid booking dates");
+    throw new Error(
+      "Invalid booking dates"
+    );
   }
 
   if (endDate <= startDate) {
@@ -111,11 +172,16 @@ export const createBooking = async (ownerId, bookingData) => {
   // =========================
 
   const millisecondsPerDay =
-    1000 * 60 * 60 * 24;
+    1000 *
+    60 *
+    60 *
+    24;
 
-  const totalNights = Math.ceil(
-    (endDate - startDate) / millisecondsPerDay
-  );
+  const totalNights =
+    Math.ceil(
+      (endDate - startDate) /
+        millisecondsPerDay
+    );
 
   if (totalNights < 1) {
     throw new Error(
@@ -127,42 +193,47 @@ export const createBooking = async (ownerId, bookingData) => {
   // Acquire Atomic Room Booking Lock
   // =====================================================
 
-  const staleLockBefore = new Date(
-    Date.now() - BOOKING_LOCK_TIMEOUT_MS
-  );
+  const staleLockBefore =
+    new Date(
+      Date.now() -
+        BOOKING_LOCK_TIMEOUT_MS
+    );
 
-  const lockStartedAt = new Date();
+  const lockStartedAt =
+    new Date();
 
-  const lockedRoom = await Room.findOneAndUpdate(
-    {
-      _id: room._id,
-      isActive: true,
-      isAvailable: true,
+  const lockedRoom =
+    await Room.findOneAndUpdate(
+      {
+        _id: room._id,
+        isActive: true,
+        isAvailable: true,
 
-      $or: [
-        {
-          bookingLock: false,
-        },
-        {
-          bookingLockAt: null,
-        },
-        {
-          bookingLockAt: {
-            $lt: staleLockBefore,
+        $or: [
+          {
+            bookingLock: false,
           },
-        },
-      ],
-    },
-    {
-      $set: {
-        bookingLock: true,
-        bookingLockAt: lockStartedAt,
+          {
+            bookingLockAt: null,
+          },
+          {
+            bookingLockAt: {
+              $lt: staleLockBefore,
+            },
+          },
+        ],
       },
-    },
-    {
-      new: true,
-    }
-  );
+      {
+        $set: {
+          bookingLock: true,
+          bookingLockAt:
+            lockStartedAt,
+        },
+      },
+      {
+        new: true,
+      }
+    );
 
   if (!lockedRoom) {
     throw new Error(
@@ -175,21 +246,25 @@ export const createBooking = async (ownerId, bookingData) => {
     // Check Room Availability
     // =========================
 
-    const conflictingBooking = await Booking.findOne({
-      room: room._id,
+    const conflictingBooking =
+      await Booking.findOne({
+        room: room._id,
 
-      status: {
-        $in: ["pending", "confirmed"],
-      },
+        status: {
+          $in: [
+            "pending",
+            "confirmed",
+          ],
+        },
 
-      checkIn: {
-        $lt: endDate,
-      },
+        checkIn: {
+          $lt: endDate,
+        },
 
-      checkOut: {
-        $gt: startDate,
-      },
-    });
+        checkOut: {
+          $gt: startDate,
+        },
+      });
 
     if (conflictingBooking) {
       throw new Error(
@@ -203,7 +278,7 @@ export const createBooking = async (ownerId, bookingData) => {
 
     const applicablePricing =
       await getApplicableRoomPricing(
-        ownerId,
+        pricingOwnerId,
         room._id,
         startDate
       );
@@ -216,7 +291,8 @@ export const createBooking = async (ownerId, bookingData) => {
       applicablePricing.pricePerNight;
 
     const totalRoomPrice =
-      pricePerNight * totalNights;
+      pricePerNight *
+      totalNights;
 
     // =========================
     // Create Pricing Breakdown
@@ -224,8 +300,13 @@ export const createBooking = async (ownerId, bookingData) => {
 
     const pricingBreakdown = [];
 
-    for (let i = 0; i < totalNights; i++) {
-      const nightDate = new Date(startDate);
+    for (
+      let i = 0;
+      i < totalNights;
+      i++
+    ) {
+      const nightDate =
+        new Date(startDate);
 
       nightDate.setDate(
         nightDate.getDate() + i
@@ -233,10 +314,13 @@ export const createBooking = async (ownerId, bookingData) => {
 
       pricingBreakdown.push({
         date: nightDate,
+
         pricingType:
           applicablePricing.pricingType,
+
         pricingName:
           applicablePricing.name,
+
         pricePerNight,
       });
     }
@@ -245,47 +329,60 @@ export const createBooking = async (ownerId, bookingData) => {
     // Create Booking
     // =========================
 
-    const booking = await Booking.create({
-      hotel: hotel._id,
+    const booking =
+      await Booking.create({
+        hotel: hotel._id,
 
-      room: room._id,
+        room: room._id,
 
-      roomCategory: room.roomCategory._id,
+        roomCategory:
+          room.roomCategory._id,
 
-      guestName: guestName.trim(),
+        guestName:
+          guestName.trim(),
 
-      guestPhone: guestPhone.trim(),
+        guestPhone:
+          guestPhone.trim(),
 
-      guestEmail: guestEmail
-        ? guestEmail.trim().toLowerCase()
-        : undefined,
+        guestEmail:
+          guestEmail
+            ? guestEmail
+                .trim()
+                .toLowerCase()
+            : undefined,
 
-      checkIn: startDate,
+        checkIn: startDate,
 
-      checkOut: endDate,
+        checkOut: endDate,
 
-      totalNights,
+        totalNights,
 
-      // =========================
-      // Pricing Snapshot
-      // =========================
+        // =========================
+        // Pricing Snapshot
+        // =========================
 
-      pricingType:
-        applicablePricing.pricingType,
+        pricingType:
+          applicablePricing.pricingType,
 
-      pricingName:
-        applicablePricing.name,
+        pricingName:
+          applicablePricing.name,
 
-      pricePerNight,
+        pricePerNight,
 
-      totalRoomPrice,
+        totalRoomPrice,
 
-      pricingBreakdown,
+        pricingBreakdown,
 
-      status: "pending",
-    });
+        status: "pending",
+      });
+
+    console.log(
+      "✅ Booking created:",
+      booking._id
+    );
 
     return booking;
+
   } finally {
     // =====================================================
     // Release Only Our Own Lock
@@ -294,12 +391,16 @@ export const createBooking = async (ownerId, bookingData) => {
     await Room.updateOne(
       {
         _id: room._id,
+
         bookingLock: true,
-        bookingLockAt: lockStartedAt,
+
+        bookingLockAt:
+          lockStartedAt,
       },
       {
         $set: {
           bookingLock: false,
+
           bookingLockAt: null,
         },
       }
@@ -311,123 +412,173 @@ export const createBooking = async (ownerId, bookingData) => {
 // Get Owner Bookings
 // =========================
 
-export const getOwnerBookings = async (ownerId) => {
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const getOwnerBookings =
+  async (ownerId) => {
+    const hotel =
+      await Hotel.findOne({
+        owner: ownerId,
+        isActive: true,
+      });
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    if (!hotel) {
+      throw new Error(
+        "Hotel not found for this owner"
+      );
+    }
 
-  const bookings = await Booking.find({
-    hotel: hotel._id,
-  })
-    .populate("room", "roomNumber")
-    .populate("roomCategory", "name")
-    .sort({
-      createdAt: -1,
-    });
+    const bookings =
+      await Booking.find({
+        hotel: hotel._id,
+      })
+        .populate(
+          "room",
+          "roomNumber"
+        )
+        .populate(
+          "roomCategory",
+          "name"
+        )
+        .sort({
+          createdAt: -1,
+        });
 
-  return bookings;
-};
+    return bookings;
+  };
 
 // =========================
 // Get Single Owner Booking
 // =========================
 
-export const getOwnerBookingById = async (
-  ownerId,
-  bookingId
-) => {
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const getOwnerBookingById =
+  async (
+    ownerId,
+    bookingId
+  ) => {
+    const hotel =
+      await Hotel.findOne({
+        owner: ownerId,
+        isActive: true,
+      });
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    if (!hotel) {
+      throw new Error(
+        "Hotel not found for this owner"
+      );
+    }
 
-  const booking = await Booking.findOne({
-    _id: bookingId,
-    hotel: hotel._id,
-  })
-    .populate("room", "roomNumber")
-    .populate("roomCategory", "name");
+    const booking =
+      await Booking.findOne({
+        _id: bookingId,
+        hotel: hotel._id,
+      })
+        .populate(
+          "room",
+          "roomNumber"
+        )
+        .populate(
+          "roomCategory",
+          "name"
+        );
 
-  if (!booking) {
-    throw new Error("Booking not found");
-  }
+    if (!booking) {
+      throw new Error(
+        "Booking not found"
+      );
+    }
 
-  return booking;
-};
+    return booking;
+  };
 
 // =========================
 // Update Booking Status
 // =========================
 
-export const updateBookingStatus = async (
-  ownerId,
-  bookingId,
-  newStatus
-) => {
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+export const updateBookingStatus =
+  async (
+    ownerId,
+    bookingId,
+    newStatus
+  ) => {
+    const hotel =
+      await Hotel.findOne({
+        owner: ownerId,
+        isActive: true,
+      });
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
+    if (!hotel) {
+      throw new Error(
+        "Hotel not found for this owner"
+      );
+    }
 
-  const allowedStatuses = [
-    "pending",
-    "confirmed",
-    "cancelled",
-    "completed",
-  ];
+    const allowedStatuses = [
+      "pending",
+      "confirmed",
+      "cancelled",
+      "completed",
+    ];
 
-  if (!allowedStatuses.includes(newStatus)) {
-    throw new Error("Invalid booking status");
-  }
+    if (
+      !allowedStatuses.includes(
+        newStatus
+      )
+    ) {
+      throw new Error(
+        "Invalid booking status"
+      );
+    }
 
-  const booking = await Booking.findOne({
-    _id: bookingId,
-    hotel: hotel._id,
-  });
+    const booking =
+      await Booking.findOne({
+        _id: bookingId,
+        hotel: hotel._id,
+      });
 
-  if (!booking) {
-    throw new Error("Booking not found");
-  }
+    if (!booking) {
+      throw new Error(
+        "Booking not found"
+      );
+    }
 
-  const allowedTransitions = {
-    pending: ["confirmed", "cancelled"],
-    confirmed: ["completed", "cancelled"],
-    cancelled: [],
-    completed: [],
+    const allowedTransitions = {
+      pending: [
+        "confirmed",
+        "cancelled",
+      ],
+
+      confirmed: [
+        "completed",
+        "cancelled",
+      ],
+
+      cancelled: [],
+
+      completed: [],
+    };
+
+    if (
+      booking.status ===
+      newStatus
+    ) {
+      throw new Error(
+        `Booking is already ${newStatus}`
+      );
+    }
+
+    if (
+      !allowedTransitions[
+        booking.status
+      ].includes(newStatus)
+    ) {
+      throw new Error(
+        `Booking cannot be changed from ${booking.status} to ${newStatus}`
+      );
+    }
+
+    booking.status =
+      newStatus;
+
+    await booking.save();
+
+    return booking;
   };
-
-  if (booking.status === newStatus) {
-    throw new Error(
-      `Booking is already ${newStatus}`
-    );
-  }
-
-  if (
-    !allowedTransitions[
-      booking.status
-    ].includes(newStatus)
-  ) {
-    throw new Error(
-      `Booking cannot be changed from ${booking.status} to ${newStatus}`
-    );
-  }
-
-  booking.status = newStatus;
-
-  await booking.save();
-
-  return booking;
-};

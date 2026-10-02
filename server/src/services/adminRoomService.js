@@ -187,6 +187,7 @@ export const deactivateRoom = async (roomId) => {
 
 };
 
+
 // =========================
 // Assign Room Category
 // =========================
@@ -196,32 +197,40 @@ export const assignRoomCategory = async (
   roomId,
   categoryId
 ) => {
-  // Find owner's active hotel
-  const hotel = await Hotel.findOne({
-    owner: ownerId,
-    isActive: true,
-  });
+  // ======================================
+  // Find Room First
+  // ======================================
 
-  if (!hotel) {
-    throw new Error("Hotel not found for this owner");
-  }
-
-  // Check room belongs to owner's hotel
-  const room = await Room.findOne({
-    _id: roomId,
-    hotel: hotel._id,
-  });
+  const room = await Room.findOne({ _id: roomId, isActive: true,});
 
   if (!room) {
-    throw new Error("Room not found for this owner");
+    throw new Error(
+      "Room not found"
+    );
   }
 
-  // Check category belongs to same hotel and is active
-  const category = await RoomCategory.findOne({
-    _id: categoryId,
-    hotel: hotel._id,
-    isActive: true,
-  });
+  // ======================================
+  // Verify Room's Hotel Belongs To Owner
+  // ======================================
+
+  const hotel = await Hotel.findOne({_id: room.hotel,owner: ownerId,isActive: true,});
+
+  if (!hotel) {
+    throw new Error(
+      "Room not found for this owner"
+    );
+  }
+
+  // ======================================
+  // Check Category Belongs To Same Hotel
+  // ======================================
+
+  const category =
+    await RoomCategory.findOne({
+      _id: categoryId,
+      hotel: hotel._id,
+      isActive: true,
+    });
 
   if (!category) {
     throw new Error(
@@ -229,11 +238,22 @@ export const assignRoomCategory = async (
     );
   }
 
-  // Assign category to room
-  room.roomCategory = category._id;
+  // ======================================
+  // Assign Category
+  // ======================================
+
+  room.roomCategory =
+    category._id;
 
   await room.save();
 
-  return await Room.findById(room._id)
-    .populate("roomCategory");
+  // ======================================
+  // Return Updated Room
+  // ======================================
+
+  return await Room.findById(
+    room._id
+  ).populate(
+    "roomCategory"
+  );
 };

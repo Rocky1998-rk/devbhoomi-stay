@@ -1,40 +1,93 @@
 import RoomCategory from "../models/RoomCategory.js";
 import Hotel from "../models/Hotel.js";
 
+
+
 // =========================
 // Create Room Category
 // =========================
 
-export const createRoomCategory = async (ownerId, categoryData) => {
+export const createRoomCategory = async (
+  ownerId,
+  categoryData
+) => {
+  // =========================
+  // Get Specific Hotel ID
+  // =========================
+
+  const {
+    hotelId,
+    ...categoryFields
+  } = categoryData;
+
+  if (!hotelId) {
+    throw new Error(
+      "Hotel ID is required"
+    );
+  }
+
+  // =========================
+  // Verify Hotel Ownership
+  // =========================
+
   const hotel = await Hotel.findOne({
+    _id: hotelId,
     owner: ownerId,
     isActive: true,
   });
 
   if (!hotel) {
-    throw new Error("Hotel not found for this owner");
+    throw new Error(
+      "Hotel not found for this owner"
+    );
   }
 
-  const { name } = categoryData;
+  // =========================
+  // Validate Name
+  // =========================
 
-  if (!name || !name.trim()) {
-    throw new Error("Room category name is required");
+  const {
+    name,
+  } = categoryFields;
+
+  if (
+    !name ||
+    !name.trim()
+  ) {
+    throw new Error(
+      "Room category name is required"
+    );
   }
 
-  const existingCategory = await RoomCategory.findOne({
-    hotel: hotel._id,
-    name: name.trim(),
-  });
+  const categoryName =
+    name.trim();
+
+  // =========================
+  // Duplicate Check
+  // =========================
+
+  const existingCategory =
+    await RoomCategory.findOne({
+      hotel: hotel._id,
+      name: categoryName,
+    });
 
   if (existingCategory) {
-    throw new Error("Room category already exists");
+    throw new Error(
+      "Room category already exists"
+    );
   }
 
-  const category = await RoomCategory.create({
-    hotel: hotel._id,
-    ...categoryData,
-    name: name.trim(),
-  });
+  // =========================
+  // Create Category
+  // =========================
+
+  const category =
+    await RoomCategory.create({
+      hotel: hotel._id,
+      ...categoryFields,
+      name: categoryName,
+    });
 
   return category;
 };
