@@ -10,6 +10,9 @@ import AdminRoute from "../guards/AdminRoute";
 import OwnerRoute from "../guards/OwnerRoute";
 
 import Home from "../pages/website/Home";
+import Hotels from "../pages/website/Hotels";
+import WhyUs from "../pages/website/WhyUs";
+import Contact from "../pages/website/Contact";
 import Login from "../pages/auth/Login";
 import AdminDashboard from "../pages/admin/Dashboard";
 import OwnerDashboard from "../pages/owner/Dashboard";
@@ -22,6 +25,9 @@ const AppRoutes = () => {
       {/*------------------ Website -------------------------------*/}
       <Route element={<WebsiteLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/hotels" element={<Hotels />} />
+        <Route path="/why-us" element={<WhyUs />} />
+        <Route path="/contact" element={<Contact />} />
       </Route>
 
       {/*------------- Login-------------------------------------- */}

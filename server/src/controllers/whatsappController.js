@@ -6,6 +6,7 @@ import {
   sendWhatsAppText,
   sendWhatsAppList,
   sendWhatsAppImage,
+  sendWhatsAppFlow,
 } from "../services/whatsappService.js";
 
 import { searchAvailableHotels } from "../services/whatsappBookingService.js";
@@ -21,6 +22,8 @@ import {
   sendWhatsAppPDF,
 } from "../services/whatsappDocumentService.js";
 
+
+const HOTEL_SELECTION_FLOW_ID = "1704794834983995";
 
 // =========================
 // WhatsApp Webhook Verification
@@ -689,6 +692,7 @@ const sendSearchingHotelsScreen =
     );
   };
 
+
 // =========================
 // Send Hotels Found Screen
 // =========================
@@ -708,104 +712,29 @@ const sendHotelsFoundScreen =
     ) {
       return sendWhatsAppText(
         phoneNumber,
+
         isHindi
           ? "😔 Aapke selected dates aur filters ke according koi hotel available nahi mila."
           : "😔 No hotels are available for your selected dates and filters."
       );
     }
 
-    // ======================================
-    // SEND HOTEL IMAGES + INFO
-    // ======================================
-
-    const hotelsToShow =
-      hotels.slice(0, 10);
-
-    for (
-      const hotel of hotelsToShow
-    ) {
-      const imageUrl =
-        hotel.coverImage ||
-        hotel.images?.[0] ||
-        null;
-
-      if (!imageUrl) {
-        continue;
-      }
-
-      const caption =
-        isHindi
-          ? `🏨 ${hotel.hotelName}
-
-📍 ${hotel.city}, ${hotel.state}
-
-💰 Starting from ₹${hotel.startingPrice}/night
-
-🏷️ ${hotel.hotelType || "Hotel"}`
-          : `🏨 ${hotel.hotelName}
-
-📍 ${hotel.city}, ${hotel.state}
-
-💰 Starting from ₹${hotel.startingPrice}/night
-
-🏷️ ${hotel.hotelType || "Hotel"}`;
-
-      try {
-        await sendWhatsAppImage(
-          phoneNumber,
-          imageUrl,
-          caption
-        );
-      } catch (error) {
-        console.error(
-          "Hotel Image Send Error:",
-          hotel.hotelName,
-          error.message
-        );
-      }
-    }
-
-    // ======================================
-    // HOTEL SELECTION LIST
-    // ======================================
-
-    const rows =
-      hotelsToShow.map(
-        (hotel) => ({
-          id:
-            `HOTEL_${hotel.hotelId}`,
-
-          title:
-            hotel.hotelName.length >
-            24
-              ? `${hotel.hotelName.slice(
-                  0,
-                  21
-                )}...`
-              : hotel.hotelName,
-
-          description:
-            `From ₹${hotel.startingPrice}/night`,
-        })
-      );
-
-    return sendWhatsAppList(
+    return sendWhatsAppButtons(
       phoneNumber,
 
       isHindi
-        ? `${hotels.length} hotel available हैं।`
+        ? `${hotels.length} hotel available hain.`
         : `${hotels.length} hotel(s) available.`,
-
-      isHindi
-        ? "Hotel चुनें"
-        : "Select Hotel",
 
       [
         {
-          title:
-            "Available Hotels",
+          id:
+            "OPEN_HOTEL_SELECTION",
 
-          rows,
+          title:
+            isHindi
+              ? "🏨 Hotel चुनें"
+              : "🏨 Select Hotel",
         },
       ]
     );
@@ -923,14 +852,15 @@ const sendBookingSummaryScreen = async (
 // =========================
 
 const processIncomingWhatsAppMessage = async (message) => {
-    const {
-      from,
-      customerName,
-      messageId,
-      text,
-      buttonId,
-      listId,
-    } = message;
+const {
+  from,
+  customerName,
+  messageId,
+  text,
+  buttonId,
+  listId,
+  flowData,
+} = message;
     // ======================================
     // Get / Create Customer Session
     // ======================================
@@ -1909,16 +1839,156 @@ if (
 }
 
 // ======================================
-// Hotel Selection
+// Open Hotel Selection Flow
 // ======================================
 
 if (
-  session.currentStep === "hotels_found" &&
+  session.currentStep ===
+    "hotels_found" &&
+  buttonId ===
+    "OPEN_HOTEL_SELECTION"
+) {
+  try {
+    // Re-check live hotel availability
+    const updatedSession =
+      await getOrCreateWhatsAppSession(
+        from,
+        customerName
+      );
+
+    const hotels =
+      await searchAvailableHotels(
+        updatedSession
+      );
+
+    if (
+      !hotels ||
+      hotels.length === 0
+    ) {
+      await updateWhatsAppSession(
+        from,
+        {
+          currentStep:
+            "hotel_type",
+
+          lastMessageId:
+            messageId,
+
+          lastMessageAt:
+            new Date(),
+        }
+      );
+
+      await sendWhatsAppText(
+        from,
+
+        session.language ===
+          "hindi"
+          ? "😔 Abhi koi hotel available nahi hai. Please dobara search karein."
+          : "😔 No hotels are currently available. Please search again."
+      );
+
+      return;
+    }
+
+    const flowToken =
+      `HOTEL_SELECT_${from}_${Date.now()}`;
+
+    await sendWhatsAppFlow(
+      from,
+      {
+        flowId:
+          HOTEL_SELECTION_FLOW_ID,
+
+        flowToken,
+
+        bodyText:
+          session.language ===
+          "hindi"
+            ? "Apna hotel select karein."
+            : "Choose a hotel to continue your booking.",
+
+        headerText:
+          "Stay Lansdowne",
+
+        footerText:
+          "Select your preferred hotel",
+
+        flowCta:
+          session.language ===
+          "hindi"
+            ? "Hotel चुनें"
+            : "Select Hotel",
+
+        screen:
+          "HOTEL_SELECTION",
+
+        hotels,
+      }
+    );
+
+    console.log(
+      "✅ Hotel Selection Flow sent"
+    );
+
+    return;
+  } catch (error) {
+    console.error(
+      "Hotel Selection Flow Error:",
+      error
+    );
+
+    await sendWhatsAppText(
+      from,
+
+      session.language ===
+        "hindi"
+        ? "😔 Hotel selection open nahi ho paaya. Please try again."
+        : "😔 Unable to open hotel selection. Please try again."
+    );
+
+    return;
+  }
+}
+
+// ======================================
+// Hotel Selection
+// ======================================
+
+// ======================================
+// Hotel Selection
+// Supports:
+// 1. WhatsApp Flow
+// 2. Legacy List Reply
+// ======================================
+
+const flowSelectedHotelId =
+  flowData?.selected_hotel
+    ? String(
+        flowData.selected_hotel
+      )
+    : null;
+
+const listSelectedHotelId =
   listId &&
   listId.startsWith("HOTEL_")
+    ? listId.replace(
+        "HOTEL_",
+        ""
+      )
+    : null;
+
+const selectedHotelId =
+  flowSelectedHotelId ||
+  listSelectedHotelId;
+
+if (
+  session.currentStep ===
+    "hotels_found" &&
+  selectedHotelId
 ) {
   const hotelId =
-    listId.replace("HOTEL_", "");
+    selectedHotelId;
 
   try {
     // ======================================
@@ -1938,6 +2008,34 @@ if (
           ? "😔 Selected hotel ab available nahi hai."
           : "😔 The selected hotel is no longer available."
       );
+      // ======================================
+// Verify Hotel Is Still In Search Result
+// ======================================
+
+const currentAvailableHotels =
+  await searchAvailableHotels(
+    session
+  );
+
+const stillAvailable =
+  currentAvailableHotels.some(
+    (item) =>
+      String(item.hotelId) ===
+      String(hotelId)
+  );
+
+if (!stillAvailable) {
+  await sendWhatsAppText(
+    from,
+
+    session.language ===
+      "hindi"
+      ? "😔 Selected hotel ab aapke selected dates/filters ke according available nahi hai."
+      : "😔 The selected hotel is no longer available for your selected dates and filters."
+  );
+
+  return;
+}
 
       return;
     }
