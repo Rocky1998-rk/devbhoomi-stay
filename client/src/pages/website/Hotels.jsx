@@ -176,10 +176,16 @@ const Hotels = () => {
               <FiCompass className="text-emerald-400" />
               <span>DISCOVER YOUR STAY</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-extrabold text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
+            <h1
+              className="text-3xl sm:text-5xl lg:text-6xl font-helvetica font-extrabold text-white tracking-tight"
+              style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}
+            >
               Find a stay that feels right.
             </h1>
-            <p className="mt-4 text-base sm:text-lg text-slate-100/95 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
+            <p
+              className="mt-4 text-base sm:text-lg text-slate-100/95 font-inter leading-relaxed"
+              style={{ fontFamily: "'Inter', sans-serif" }}
+            >
               Explore comfortable stays across Lansdowne, Kotdwar and Uttarakhand with verified photos, direct tariffs, and WhatsApp assistance.
             </p>
           </div>

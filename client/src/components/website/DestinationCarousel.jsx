@@ -179,7 +179,7 @@ const DestinationCarousel = ({ className = "" }) => {
 
   return (
     <section
-      className={`relative bg-[#F7F3EA] border-t border-[#EAE4D9] py-16 sm:py-20 lg:py-24 overflow-hidden ${className}`}
+      className={`relative bg-[#F7F3EA] border-t border-[#EAE4D9] py-10 sm:py-12 lg:py-14 overflow-hidden ${className}`}
     >
       {/* Subtle Himalayan Topographic Contour Background */}
       <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
@@ -205,37 +205,37 @@ const DestinationCarousel = ({ className = "" }) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 lg:gap-10 items-center">
           {/* ============================================================ */}
           {/* LEFT COLUMN: Section Info, Editorial Heading, Controls */}
           {/* ============================================================ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
             <div>
               {/* Eyebrow */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#0F1B2D]/8 border border-[#0F1B2D]/15 text-xs font-bold uppercase tracking-[0.2em] text-[#0F1B2D] mb-4 backdrop-blur-xs">
-                <FiCompass size={14} className="text-[#D9A354]" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0F1B2D]/8 border border-[#0F1B2D]/15 text-[11px] font-bold uppercase tracking-[0.2em] text-[#0F1B2D] mb-3 backdrop-blur-xs">
+                <FiCompass size={13} className="text-[#D9A354]" />
                 <span>EXPLORE UTTARAKHAND</span>
               </div>
 
               {/* Main Heading */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-display font-extrabold text-[#0F1B2D] tracking-tight leading-[1.14]">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-[#0F1B2D] tracking-tight leading-[1.18]">
                 Places worth staying for.
               </h2>
 
               {/* Supporting Text */}
-              <p className="mt-3 text-base sm:text-lg text-[#4B586E] leading-relaxed font-normal">
+              <p className="mt-2 text-xs sm:text-sm text-[#4B586E] leading-relaxed font-normal">
                 Discover handpicked stays and mountain destinations across Lansdowne, Kotdwar and the Garhwal Himalayas.
               </p>
             </div>
 
             {/* Supporting Context Badges */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E7DFD3] text-xs font-bold text-[#0F1B2D] shadow-2xs">
-                <FiMapPin size={13} className="text-[#D9A354]" />
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-[#E7DFD3] text-[11px] font-bold text-[#0F1B2D] shadow-2xs">
+                <FiMapPin size={12} className="text-[#D9A354]" />
                 8 Curated Experiences
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E7DFD3] text-xs font-bold text-[#0F1B2D] shadow-2xs">
-                <FiShield size={13} className="text-[#D9A354]" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-[#E7DFD3] text-[11px] font-bold text-[#0F1B2D] shadow-2xs">
+                <FiShield size={12} className="text-[#D9A354]" />
                 100% Verified Stays
               </span>
             </div>

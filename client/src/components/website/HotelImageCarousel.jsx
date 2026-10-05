@@ -37,18 +37,21 @@ const HotelImageCarousel = ({
 
     const timer = setInterval(() => {
       if (!isMountedRef.current) return;
-      setCurrentIndex((prev) => {
-        const next = (prev + 1) % total;
-        if (onIndexChange) onIndexChange(next);
-        return next;
-      });
+      setCurrentIndex((prev) => (prev + 1) % total);
     }, intervalMs);
 
     return () => {
       isMountedRef.current = false;
       clearInterval(timer);
     };
-  }, [total, intervalMs, onIndexChange]);
+  }, [total, intervalMs]);
+
+  // Safely notify parent component of index changes
+  useEffect(() => {
+    if (onIndexChange) {
+      onIndexChange(currentIndex);
+    }
+  }, [currentIndex, onIndexChange]);
 
   // Preload upcoming image to guarantee silky-smooth transitions without blank flashes
   useEffect(() => {

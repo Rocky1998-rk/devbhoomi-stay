@@ -16,7 +16,7 @@ const FinalCTA = ({
   className = "",
 }) => {
   return (
-    <section className={`relative bg-[#101C2C] text-[#F7F3EA] py-18 sm:py-24 border-t border-[#1C2E46] overflow-hidden ${className}`}>
+    <section className={`relative bg-[#101C2C] text-[#F7F3EA] py-10 sm:py-12 lg:py-14 border-t border-[#1C2E46] overflow-hidden ${className}`}>
       {/* Subtle Himalayan Topographic Contour Line Art Background */}
       <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
         <svg
@@ -48,40 +48,40 @@ const FinalCTA = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           {/* LEFT COLUMN: Content, Eyebrow, Heading, Description & Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="lg:col-span-7 flex flex-col items-start space-y-5"
+            className="lg:col-span-7 flex flex-col items-start space-y-4"
           >
             {/* Small Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#17283D] border border-[#263D5C] text-xs font-bold uppercase tracking-[0.2em] text-[#D6A15D]">
-              <FiCompass size={14} className="text-[#D6A15D]" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#17283D] border border-[#263D5C] text-[11px] font-bold uppercase tracking-[0.2em] text-[#D6A15D]">
+              <FiCompass size={13} className="text-[#D6A15D]" />
               <span>{eyebrow}</span>
             </div>
 
             {/* Large Heading */}
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-[#F7F3EA] tracking-tight leading-[1.14]">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-[#F7F3EA] tracking-tight leading-[1.18]">
               {title}
             </h2>
 
             {/* Supporting Text */}
-            <p className="text-[#AAB7C6] text-base sm:text-lg leading-relaxed max-w-xl font-normal">
+            <p className="text-[#AAB7C6] text-xs sm:text-sm lg:text-base leading-relaxed max-w-xl font-normal">
               {subtitle}
             </p>
 
             {/* Action Buttons (Moderately Rounded 10px-12px) */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-auto">
+            <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {/* Primary Button */}
               <Link
                 to="/hotels"
-                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-[#D6A15D] hover:bg-[#C28E4B] text-[#101C2C] font-bold text-sm sm:text-base shadow-md shadow-[#D6A15D]/20 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-center"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl bg-[#D6A15D] hover:bg-[#C28E4B] text-[#101C2C] font-bold text-xs sm:text-sm shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-center"
               >
                 <span>Explore Hotels</span>
-                <FiArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
+                <FiArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
               </Link>
 
               {/* Secondary WhatsApp Button */}
@@ -89,9 +89,9 @@ const FinalCTA = ({
                 href={WHATSAPP_CONFIG.getLink()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#17283D] hover:bg-[#1E3450] text-[#F7F3EA] font-semibold text-sm sm:text-base border border-[#2A4160] hover:border-[#D6A15D]/40 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-center"
+                className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 rounded-xl bg-[#17283D] hover:bg-[#1E3450] text-[#F7F3EA] font-semibold text-xs sm:text-sm border border-[#2A4160] hover:border-[#D6A15D]/40 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 text-center"
               >
-                <FiMessageCircle size={18} className="text-[#D6A15D] group-hover:scale-110 transition-transform" />
+                <FiMessageCircle size={16} className="text-[#D6A15D] group-hover:scale-110 transition-transform" />
                 <span>Start on WhatsApp</span>
               </a>
             </div>

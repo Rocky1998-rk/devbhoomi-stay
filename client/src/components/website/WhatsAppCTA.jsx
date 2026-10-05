@@ -49,34 +49,34 @@ const WhatsAppCTA = ({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.6 }}
-      className={`rounded-3xl bg-gradient-to-br from-[#FDFBF8] via-[#F8F5EE] to-[#F1EBE0] border border-[#E5DFD3] text-[#0F172A] p-6 sm:p-9 lg:p-11 relative overflow-hidden shadow-lg shadow-stone-900/5 ${className}`}
+      className={`rounded-2xl bg-gradient-to-br from-[#FDFBF8] via-[#F8F5EE] to-[#F1EBE0] border border-[#E5DFD3] text-[#0F172A] p-5 sm:p-7 lg:p-8 relative overflow-hidden shadow-md shadow-stone-900/5 ${className}`}
     >
       {/* Subtle Warm Ambient Topographic Lighting (Bright & Warm, Zero Dark Gloom) */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-radial from-[#C2956E]/12 via-[#FAF8F5]/0 to-transparent pointer-events-none blur-3xl" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-radial from-[#1E3A5F]/6 to-transparent pointer-events-none blur-2xl" />
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-7 lg:gap-9 items-center">
         {/* Left Column: Content + Benefits + CTA */}
         <motion.div
           initial={{ opacity: 0, x: -25 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.55, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
-          className="lg:col-span-7 flex flex-col items-start space-y-4 sm:space-y-5"
+          className="lg:col-span-7 flex flex-col items-start space-y-3.5 sm:space-y-4"
         >
           {/* Eyebrow Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 text-[#1E3A5F] text-xs font-bold uppercase tracking-wider border border-[#E5DFD3] shadow-2xs backdrop-blur-xs">
-            <FiMessageCircle className="text-[#C2956E]" size={14} />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 text-[#1E3A5F] text-[11px] font-bold uppercase tracking-wider border border-[#E5DFD3] shadow-2xs backdrop-blur-xs">
+            <FiMessageCircle className="text-[#C2956E]" size={13} />
             <span>Direct WhatsApp Assistance</span>
           </div>
 
           {/* Main Heading */}
-          <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-display font-extrabold text-[#0F172A] tracking-tight leading-[1.18]">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-[#0F172A] tracking-tight leading-[1.18]">
             {title}
           </h2>
 
           {/* Description */}
-          <p className="text-[#4B586E] text-base sm:text-lg leading-relaxed max-w-xl font-normal">
+          <p className="text-[#4B586E] text-xs sm:text-sm lg:text-base leading-relaxed max-w-xl font-normal">
             {subtitle}
           </p>
 
