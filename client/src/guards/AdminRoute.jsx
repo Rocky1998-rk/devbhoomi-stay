@@ -8,8 +8,12 @@ const AdminRoute = () => {
     return <h2>Loading...</h2>;
   }
 
-  if (!user || user.role !== "admin") {
-  return <Navigate to="/unauthorized" replace />;
+  if (!user) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (user.role !== "admin") {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;

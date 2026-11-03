@@ -8,8 +8,12 @@ const OwnerRoute = () => {
     return <h2>Loading...</h2>;
   }
 
-  if (!user || user.role !== "owner") {
-   return <Navigate to="/unauthorized" replace />;
+  if (!user) {
+    return <Navigate to="/owner/login" replace />;
+  }
+
+  if (user.role !== "owner") {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;

@@ -4,30 +4,26 @@ import {
   updateWhatsAppSession,
   sendWhatsAppButtons,
   sendWhatsAppText,
+  sendWhatsAppContact,
   sendWhatsAppList,
   sendWhatsAppImage,
   sendWhatsAppFlow,
 } from "../services/whatsappService.js";
-
 import { searchAvailableHotels } from "../services/whatsappBookingService.js";
 import Hotel from "../models/Hotel.js";
 import createRazorpayPaymentLink from "../services/razorpayService.js";
 import WhatsAppPayment from "../models/WhatsAppPayment.js";
 import Room from "../models/Room.js";
-import generateBookingVoucher
-  from "../services/voucherService.js";
+import RoomPricing from "../models/RoomPricing.js";
+import { getApplicableRoomPricing } from "../services/roomPricingService.js";
+import generateBookingVoucher from "../services/voucherService.js";
 
-import {
-  uploadWhatsAppPDF,
-  sendWhatsAppPDF,
-} from "../services/whatsappDocumentService.js";
+import {uploadWhatsAppPDF,sendWhatsAppPDF,} from "../services/whatsappDocumentService.js";
 
 
 const HOTEL_SELECTION_FLOW_ID = "1704794834983995";
 
-// =========================
-// WhatsApp Webhook Verification
-// =========================
+// ========================= WhatsApp Webhook Verification =========================
 
 export const verifyWhatsAppWebhook = (req, res) => {
   try {
@@ -58,64 +54,91 @@ export const verifyWhatsAppWebhook = (req, res) => {
   }
 };
 
-// =========================
-// Send Welcome Screen
-// =========================
+// ========================= Send Welcome Screen (Screen 1) =========================
 
-const sendWelcomeScreen = async (
-  phoneNumber
-) => {
+
+const sendWelcomeScreen = async (phoneNumber) => {
+  const welcomeImageUrl =
+    process.env.WHATSAPP_WELCOME_IMAGE_URL?.trim();
+
+  if (!welcomeImageUrl) {
+    console.warn(
+      "WHATSAPP_WELCOME_IMAGE_URL is not configured."
+    );
+  }
+
   return sendWhatsAppButtons(
     phoneNumber,
-
-    "🏔️ Welcome to Stay Lansdowne\n\nPlease choose your preferred language.",
-
+    [
+      "🏔️ *Welcome to DevBhoomi Stay*",
+      "Escape to the serene hills of Lansdowne & Kotdwar.",
+      "✨ Handpicked boutique stays, homestays & resorts.",
+      "Please choose your preferred language:",
+    ].join("\n\n"),
     [
       {
         id: "LANG_HINDI",
-        title: "हिन्दी",
+        title: "🇮🇳 हिन्दी",
       },
       {
         id: "LANG_ENGLISH",
-        title: "English",
+        title: "🇬🇧 English",
       },
-    ]
+    ],
+    {
+      headerImageUrl: welcomeImageUrl,
+      footerText: "DevBhoomi Stay • Lansdowne & Kotdwar",
+    }
   );
 };
 
-// =========================
-// Send Home Screen
-// =========================
+// ========================= Send Home Screen =========================
 
 const sendHomeScreen = async (
   phoneNumber,
-  language
+  language,
+  customerName = ""
 ) => {
-  const isHindi =
-    language === "hindi";
+  const isHindi = language === "hindi";
+
+  // Get the first name from WhatsApp profile
+  const rawName = String(customerName || "").trim();
+
+  console.log("Home Screen Customer Name:", customerName);
+
+  const firstName = rawName.split(/\s+/)[0];
+
+  // Fallback if WhatsApp profile name is unavailable
+  const displayName =
+    firstName &&
+    !["customer", "unknown", "user"].includes(
+      firstName.toLowerCase()
+    )
+      ? firstName
+      : isHindi
+        ? "दोस्त"
+        : "there";
+
+  const bodyText = isHindi
+    ? `नमस्ते ${displayName} 🙏🏻\n\n*DevBhoomi Stay* में आपका स्वागत है 🏔️\n\nआज हम आपकी क्या सहायता कर सकते हैं?`
+    : `Namaste ${displayName} 🙏🏻\n\nWelcome to *DevBhoomi Stay* 🏔️✨\n\n🌄 Discover the beauty of the mountains and find your perfect stay!\n\nHow may we assist you today? 🧳`;
 
   return sendWhatsAppButtons(
     phoneNumber,
-
-    isHindi
-      ? "आपका स्वागत है 🙏\n\nआप क्या करना चाहते हैं?"
-      : "Welcome to Stay Lansdowne 🏔️\n\nWhat would you like to do?",
-
+    bodyText,
     [
       {
         id: "HOME_BOOK_HOTEL",
         title: isHindi
-          ? "🏨 होटल बुक करें"
-          : "🏨 Book Hotel",
+          ? "🏨 होटल खोजें"
+          : "🏨 Book a Stay",
       },
-
       {
         id: "HOME_CONTACT_US",
         title: isHindi
-          ? "📞 संपर्क करें"
-          : "📞 Contact Us",
+          ? "📞 संपर्क / सहायता"
+          : "📞 Concierge Support",
       },
-
       {
         id: "HOME_ABOUT_US",
         title: isHindi
@@ -126,9 +149,9 @@ const sendHomeScreen = async (
   );
 };
 
-// =========================
-// Send Destination Screen
-// =========================
+
+
+// ========================= Send Destination Screen =========================
 
 const sendDestinationScreen = async (
   phoneNumber,
@@ -141,26 +164,24 @@ const sendDestinationScreen = async (
     phoneNumber,
 
     isHindi
-      ? "अपना गंतव्य चुनें:"
-      : "Please select your destination:",
+      ? "📍 *गंतव्य का चयन करें*\n\nआप कहाँ ठहरना चाहते हैं?"
+      : "📍 *Select Destination*\n\nWhere would you like to stay?",
 
     [
       {
         id: "DEST_LANSDOWNE",
-        title: "Lansdowne",
+        title: "🏔️ Lansdowne",
       },
 
       {
         id: "DEST_KOTDWAR",
-        title: "Kotdwar",
+        title: "🌲 Kotdwar",
       },
     ]
   );
 };
 
-// =========================
-// Send Check-in Screen
-// =========================
+// ========================= Send Check-in Screen =========================
 
 const sendCheckInScreen = async (
   phoneNumber,
@@ -173,26 +194,24 @@ const sendCheckInScreen = async (
     phoneNumber,
 
     isHindi
-      ? "Check-in date चुनें:"
-      : "Please select your check-in date:",
+      ? "📅 *चेक-इन तिथि (Check-in Date)*\n\nकृपया अपनी चेक-इन डेट चुनें:"
+      : "📅 *Check-in Date*\n\nPlease select your check-in date:",
 
     [
       {
         id: "CHECKIN_TOMORROW",
-        title: "Tomorrow",
+        title: "📅 Tomorrow",
       },
 
       {
         id: "CHECKIN_OTHER",
-        title: "Select Another Date",
+        title: "🗓️ Custom Date",
       },
     ]
   );
 };
 
-// =========================
-// Date Helpers
-// =========================
+// ========================= Date Helpers =========================
 
 const getTodayIST = () => {
   const parts =
@@ -234,9 +253,7 @@ const getTodayIST = () => {
   };
 };
 
-// =========================
-// Create UTC Date
-// =========================
+// ========================= Create UTC Date =========================
 
 const createUTCDate = (
   year,
@@ -252,9 +269,7 @@ const createUTCDate = (
   );
 };
 
-// =========================
-// Add Days
-// =========================
+// ========================= Add Days =========================
 
 const addDays = (
   date,
@@ -271,9 +286,7 @@ const addDays = (
   return result;
 };
 
-// =========================
-// Format Date
-// =========================
+// ========================= Format Date =========================
 
 const formatDate = (
   date
@@ -291,6 +304,71 @@ const formatDate = (
       year: "numeric",
     }
   );
+};
+
+// =========================
+// Convert URL to WhatsApp Compatible JPG
+// =========================
+const toWhatsAppJpgUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes("res.cloudinary.com")) {
+    cleanUrl = cleanUrl.replace(/\.(webp|png|jpeg)(\?.*)?$/i, ".jpg$2");
+    if (!cleanUrl.endsWith(".jpg")) {
+      cleanUrl = cleanUrl.replace("/upload/", "/upload/f_jpg/");
+    }
+  }
+  return cleanUrl;
+};
+
+// =========================
+// Get Real Room Price Per Night From DB
+// =========================
+const getRoomNightPrice = async (hotel, roomId, checkInDate) => {
+  const date = checkInDate ? new Date(checkInDate) : new Date();
+  const ownerId = hotel?.owner?._id || hotel?.owner;
+
+  if (ownerId && roomId) {
+    try {
+      const applicable = await getApplicableRoomPricing(ownerId, roomId, date);
+      if (applicable?.pricePerNight) {
+        return applicable.pricePerNight;
+      }
+    } catch (err) {
+      // fallback below
+    }
+  }
+
+  if (roomId) {
+    try {
+      const directPricing = await RoomPricing.findOne({
+        room: roomId,
+        isActive: true,
+      }).sort({ priority: -1 });
+      if (directPricing?.pricePerNight) {
+        return directPricing.pricePerNight;
+      }
+    } catch (err) {
+      // fallback below
+    }
+  }
+
+  const hotelId = hotel?._id || hotel?.hotelId;
+  if (hotelId) {
+    try {
+      const hotelPricing = await RoomPricing.findOne({
+        hotel: hotelId,
+        isActive: true,
+      }).sort({ priority: -1 });
+      if (hotelPricing?.pricePerNight) {
+        return hotelPricing.pricePerNight;
+      }
+    } catch (err) {
+      // fallback below
+    }
+  }
+
+  return Number(hotel?.startingPrice) || 0;
 };
 
 // =========================
@@ -395,9 +473,7 @@ const parseUserDate = (
   return date;
 };
 
-// =========================
-// Send Check-out Screen
-// =========================
+// ========================= Send Check-out Screen =========================
 
 const sendCheckOutScreen =
   async (
@@ -424,26 +500,24 @@ const sendCheckOutScreen =
       phoneNumber,
 
       isHindi
-        ? `Check-out date चुनें:\n\n${nextDayLabel}`
-        : `Please select your check-out date:\n\n${nextDayLabel}`,
+        ? `📅 *चेक-आउट तिथि (Check-out Date)*\n\nअनुशंसित चेक-आउट तिथि: *${nextDayLabel}*`
+        : `📅 *Check-out Date*\n\nRecommended check-out: *${nextDayLabel}*`,
 
       [
         {
           id: "CHECKOUT_NEXT_DAY",
-          title: "Next Day",
+          title: "📅 Next Day",
         },
 
         {
           id: "CHECKOUT_OTHER",
-          title: "Select Another Date",
+          title: "🗓️ Custom Date",
         },
       ]
     );
   };
 
-// =========================
-// Send Adults Screen
-// =========================
+// ========================= Send Adults Screen =========================
 
 const sendAdultsScreen =
   async (
@@ -458,8 +532,8 @@ const sendAdultsScreen =
       phoneNumber,
 
       isHindi
-        ? "कितने adults यात्रा करेंगे?"
-        : "How many adults will be staying?",
+        ? "👥 *अतिथियों की संख्या (Adults)*\n\nकृपया वयस्कों (12+ वर्ष) की संख्या चुनें:"
+        : "👥 *Number of Adults*\n\nPlease select the number of adult guests (12+ yrs):",
 
       isHindi
         ? "Adults चुनें"
@@ -474,22 +548,26 @@ const sendAdultsScreen =
           rows: [
             {
               id: "ADULTS_1",
-              title: "1 Adult",
+              title: "👤 1 Adult",
+              description: "Solo traveler",
             },
 
             {
               id: "ADULTS_2",
-              title: "2 Adults",
+              title: "👥 2 Adults",
+              description: "Couple / 2 guests",
             },
 
             {
               id: "ADULTS_3",
-              title: "3 Adults",
+              title: "👥 3 Adults",
+              description: "3 guests stay",
             },
 
             {
               id: "ADULTS_4_PLUS",
-              title: "4+ Adults",
+              title: "👥 4+ Adults",
+              description: "Family / group stay",
             },
           ],
         },
@@ -497,9 +575,7 @@ const sendAdultsScreen =
     );
   };
 
-// =========================
-// Send Children Screen
-// =========================
+// =========================Send Children Screen =========================
 
 const sendChildrenScreen =
   async (
@@ -514,8 +590,8 @@ const sendChildrenScreen =
       phoneNumber,
 
       isHindi
-        ? "कितने children यात्रा करेंगे?"
-        : "How many children will be staying?",
+        ? "👶 *बच्चों की संख्या (Children)*\n\nक्या आपके साथ 12 वर्ष से कम आयु के बच्चे यात्रा कर रहे हैं?"
+        : "👶 *Number of Children*\n\nAre any children under 12 traveling with you?",
 
       isHindi
         ? "Children चुनें"
@@ -530,22 +606,26 @@ const sendChildrenScreen =
           rows: [
             {
               id: "CHILDREN_0",
-              title: "0 Children",
+              title: "• 0 Children",
+              description: "No children",
             },
 
             {
               id: "CHILDREN_1",
-              title: "1 Child",
+              title: "👶 1 Child",
+              description: "Below 12 years",
             },
 
             {
               id: "CHILDREN_2",
-              title: "2 Children",
+              title: "👶 2 Children",
+              description: "Below 12 years",
             },
 
             {
               id: "CHILDREN_3_PLUS",
-              title: "3+ Children",
+              title: "👶 3+ Children",
+              description: "Below 12 years",
             },
           ],
         },
@@ -553,9 +633,7 @@ const sendChildrenScreen =
     );
   };
 
-// =========================
-// Send Budget Screen
-// =========================
+// ========================= Send Budget Screen =========================
 
 const sendBudgetScreen =
   async (
@@ -570,8 +648,8 @@ const sendBudgetScreen =
       phoneNumber,
 
       isHindi
-        ? "अपना budget चुनें:"
-        : "Please select your budget:",
+        ? "💰 *बजट सीमा (Budget Range)*\n\nप्रति रात (per night) के लिए अपना पसंदीदा बजट चुनें:"
+        : "💰 *Budget Preference*\n\nPlease select your preferred tariff range per night:",
 
       isHindi
         ? "Budget चुनें"
@@ -585,25 +663,26 @@ const sendBudgetScreen =
           rows: [
             {
               id: "BUDGET_1500_2500",
-              title:
-                "₹1500 - ₹2500",
+              title: "🏷️ ₹1,500 – ₹2,500",
+              description: "Economical & comfortable",
             },
 
             {
               id: "BUDGET_2500_4000",
-              title:
-                "₹2500 - ₹4000",
+              title: "⭐ ₹2,500 – ₹4,000",
+              description: "Deluxe hill stays",
             },
 
             {
               id: "BUDGET_4000_6000",
-              title:
-                "₹4000 - ₹6000",
+              title: "✨ ₹4,000 – ₹6,000",
+              description: "Premium stays with valley views",
             },
 
             {
               id: "BUDGET_LUXURY",
-              title: "Luxury",
+              title: "👑 Luxury (₹6,000+)",
+              description: "Boutique resorts & villas",
             },
           ],
         },
@@ -628,8 +707,8 @@ const sendHotelTypeScreen =
       phoneNumber,
 
       isHindi
-        ? "आप किस type का hotel चाहते हैं?"
-        : "What type of stay are you looking for?",
+        ? "🏡 *प्रॉपर्टी प्रकार (Property Type)*\n\nआप किस प्रकार के आवास में ठहरना चाहते हैं?"
+        : "🏡 *Stay Preference*\n\nWhat type of accommodation do you prefer?",
 
       isHindi
         ? "Hotel Type चुनें"
@@ -643,26 +722,26 @@ const sendHotelTypeScreen =
           rows: [
             {
               id: "HOTEL_TYPE_BUDGET",
-              title:
-                "Budget Hotel",
+              title: "🏷️ Budget Stay",
+              description: "Clean & affordable",
             },
 
             {
               id: "HOTEL_TYPE_DELUXE",
-              title:
-                "Deluxe Hotel",
+              title: "⭐ Deluxe Hotel",
+              description: "Scenic views & modern amenities",
             },
 
             {
               id: "HOTEL_TYPE_LUXURY",
-              title:
-                "Luxury Hotel",
+              title: "👑 Luxury Resort",
+              description: "High-end comfort & suites",
             },
 
             {
               id: "HOTEL_TYPE_HOMESTAY",
-              title:
-                "Homestay",
+              title: "🏡 Heritage Homestay",
+              description: "Authentic local Uttarakhand stay",
             },
           ],
         },
@@ -683,13 +762,46 @@ const sendSearchingHotelsScreen =
       language ===
       "hindi";
 
-    return sendWhatsAppText(
-      phoneNumber,
+    const searchingImageUrl =
+      process.env.WHATSAPP_SEARCHING_IMAGE_URL?.trim() ||
+      "https://res.cloudinary.com/dszadvuz6/image/upload/v1792822687/stay_lansdowne/searching_hotels_banner.jpg";
 
-      isHindi
-        ? "🔍 आपके लिए hotels खोज रहे हैं...\n\nकृपया कुछ क्षण प्रतीक्षा करें।"
-        : "🔍 Searching hotels for you...\n\nPlease wait a moment."
-    );
+    const searchingTitle = "🔍 Searching Hotels...";
+    const waitMessage = isHindi
+      ? "Please wait while we find the best options for you."
+      : "Please wait while we find the best options for you.";
+
+    try {
+      // 1. First message: 🔍 Searching Hotels...
+      await sendWhatsAppText(
+        phoneNumber,
+        searchingTitle
+      );
+
+      // 2. Green hotel & landscape illustration banner (exact match to reference)
+      if (searchingImageUrl) {
+        await sendWhatsAppImage(
+          phoneNumber,
+          searchingImageUrl
+        );
+      }
+
+      // 3. Second message: Please wait while we find the best options for you.
+      await sendWhatsAppText(
+        phoneNumber,
+        waitMessage
+      );
+    } catch (error) {
+      console.error(
+        "Error sending searching hotels screen:",
+        error?.message || error
+      );
+
+      await sendWhatsAppText(
+        phoneNumber,
+        `${searchingTitle}\n\n${waitMessage}`
+      );
+    }
   };
 
 
@@ -714,30 +826,74 @@ const sendHotelsFoundScreen =
         phoneNumber,
 
         isHindi
-          ? "😔 Aapke selected dates aur filters ke according koi hotel available nahi mila."
-          : "😔 No hotels are available for your selected dates and filters."
+          ? "ℹ️ *कोई होटल उपलब्ध नहीं मिला*\n\nआपके चुने गए दिनांक और फ़िल्टर के अनुसार वर्तमान में कोई प्रॉपर्टी उपलब्ध नहीं है। कृपया भिन्न तिथियों के साथ प्रयास करें या सहायता के लिए संपर्क करें।"
+          : "ℹ️ *No Stays Available*\n\nNo properties currently match your selected dates and filters. Please consider adjusting your dates or contacting our team."
       );
     }
 
-    return sendWhatsAppButtons(
-      phoneNumber,
+    // 1. Header message
+    const introMessage = isHindi
+      ? `✨ *${hotels.length} होटल उपलब्ध हैं*\n━━━━━━━━━━━━━━━━━━━\nनीचे होटल की तस्वीरें और विवरण देखें, और अपना पसंदीदा होटल चुनने के लिए *होटल चुनें* पर टैप करें:`
+      : `✨ *${hotels.length} Hotel(s) Available*\n━━━━━━━━━━━━━━━━━━━\nBrowse hotels below with photos & rates, then tap *Select Hotel* to choose:`;
 
-      isHindi
-        ? `${hotels.length} hotel available hain.`
-        : `${hotels.length} hotel(s) available.`,
+    await sendWhatsAppText(phoneNumber, introMessage);
 
-      [
-        {
-          id:
-            "OPEN_HOTEL_SELECTION",
+    // 2. Send up to 3 individual Hotel Photo Cards
+    const cardsToSend = hotels.slice(0, 3);
+    for (const h of cardsToSend) {
+      const stars = "⭐".repeat(h.starRating || 4);
+      const hotelImage = toWhatsAppJpgUrl(
+        h.coverImage ||
+        (Array.isArray(h.images) && h.images[0]) ||
+        null
+      );
 
-          title:
-            isHindi
-              ? "🏨 Hotel चुनें"
+      const address =
+        h.address?.trim() ||
+        `${h.city || "Lansdowne"}, ${h.state || "Uttarakhand"}`;
+
+      const price = h.startingPrice || 3000;
+
+      const cardText = isHindi
+        ? `🏨 *${h.hotelName}*\n${stars}\n💰 ₹${price} / Night\n📍 ${address}`
+        : `🏨 *${h.hotelName}*\n${stars}\n💰 ₹${price} / Night\n📍 ${address}`;
+
+      const buttonOptions = hotelImage
+        ? { headerImageUrl: hotelImage }
+        : {};
+
+      await sendWhatsAppButtons(
+        phoneNumber,
+        cardText,
+        [
+          {
+            id: `HOTEL_${String(h.hotelId)}`,
+            title: isHindi
+              ? "🏨 होटल चुनें"
               : "🏨 Select Hotel",
-        },
-      ]
-    );
+          },
+        ],
+        buttonOptions
+      );
+    }
+
+    // 3. If more than 3 hotels are available, provide a View All Stays button
+    if (hotels.length > 3) {
+      await sendWhatsAppButtons(
+        phoneNumber,
+        isHindi
+          ? `📋 *अन्य ${hotels.length - 3} होटल भी उपलब्ध हैं*\nबाकी सभी विकल्प देखने के लिए नीचे क्लिक करें:`
+          : `📋 *${hotels.length - 3} More Properties Available*\nTap below to explore all options:`,
+        [
+          {
+            id: "OPEN_HOTEL_SELECTION",
+            title: isHindi
+              ? "📋 सभी होटल देखें"
+              : "📋 View All Stays",
+          },
+        ]
+      );
+    }
   };
 
 
@@ -760,13 +916,22 @@ const sendBookingSummaryScreen = async (
   const checkIn = new Date(session.checkIn);
   const checkOut = new Date(session.checkOut);
 
-  const totalNights = Math.ceil(
-    (checkOut.getTime() - checkIn.getTime()) /
-      (1000 * 60 * 60 * 24)
+  const totalNights = Math.max(
+    1,
+    Math.ceil(
+      (checkOut.getTime() - checkIn.getTime()) /
+        (1000 * 60 * 60 * 24)
+    )
   );
 
-  const pricePerNight =
-    Number(hotel.startingPrice) || 0;
+  let pricePerNight = Number(hotel?.startingPrice) || 0;
+  if (!pricePerNight) {
+    pricePerNight = await getRoomNightPrice(
+      hotel,
+      session?.selectedRoom,
+      session?.checkIn
+    );
+  }
 
   const totalAmount =
     pricePerNight * totalNights;
@@ -787,45 +952,37 @@ const sendBookingSummaryScreen = async (
   );
 
   const summaryMessage = isHindi
-    ? `📋 Booking Summary
+    ? `📋 *बुकिंग सारांश (Booking Summary)*
+━━━━━━━━━━━━━━━━━━━
+🏨 *होटल:* ${hotel.hotelName}
+📍 *स्थान:* ${session.destination}
 
-🏨 Hotel: ${hotel.hotelName}
+📅 *चेक-इन:* ${checkInText}
+📅 *चेक-आउट:* ${checkOutText}
+🌙 *अवधि:* ${totalNights} Night(s)
 
-📍 Destination: ${session.destination}
+👥 *अतिथि:* ${session.adults} Adult(s)${session.children ? `, ${session.children} Child(ren)` : ""}
+👤 *मुख्य अतिथि:* ${session.guestName}
+📞 *संपर्क:* ${session.contactNumber}
+━━━━━━━━━━━━━━━━━━━
+🏷️ *टैरिफ:* ₹${pricePerNight} / night
+💳 *कुल राशि:* ₹${totalAmount}`
 
-📅 Check-in: ${checkInText}
-📅 Check-out: ${checkOutText}
+    : `📋 *Booking Summary*
+━━━━━━━━━━━━━━━━━━━
+🏨 *Hotel:* ${hotel.hotelName}
+📍 *Destination:* ${session.destination}
 
-🌙 Nights: ${totalNights}
+📅 *Check-in:* ${checkInText}
+📅 *Check-out:* ${checkOutText}
+🌙 *Duration:* ${totalNights} Night(s)
 
-👨 Adults: ${session.adults}
-👶 Children: ${session.children}
-
-👤 Guest: ${session.guestName}
-📱 Contact: ${session.contactNumber}
-
-💰 Price: ₹${pricePerNight}/night
-💵 Total Amount: ₹${totalAmount}`
-
-    : `📋 Booking Summary
-
-🏨 Hotel: ${hotel.hotelName}
-
-📍 Destination: ${session.destination}
-
-📅 Check-in: ${checkInText}
-📅 Check-out: ${checkOutText}
-
-🌙 Nights: ${totalNights}
-
-👨 Adults: ${session.adults}
-👶 Children: ${session.children}
-
-👤 Guest: ${session.guestName}
-📱 Contact: ${session.contactNumber}
-
-💰 Price: ₹${pricePerNight}/night
-💵 Total Amount: ₹${totalAmount}`;
+👥 *Guests:* ${session.adults} Adult(s)${session.children ? `, ${session.children} Child(ren)` : ""}
+👤 *Lead Guest:* ${session.guestName}
+📞 *Contact:* ${session.contactNumber}
+━━━━━━━━━━━━━━━━━━━
+🏷️ *Tariff:* ₹${pricePerNight} / night
+💳 *Total Amount:* ₹${totalAmount}`;
 
   await sendWhatsAppButtons(
     phoneNumber,
@@ -834,13 +991,13 @@ const sendBookingSummaryScreen = async (
       {
         id: "CONFIRM_BOOKING",
         title: isHindi
-          ? "✅ Booking Confirm करें"
+          ? "✅ पुष्टि करें"
           : "✅ Confirm Booking",
       },
       {
         id: "RESTART_BOOKING",
         title: isHindi
-          ? "🔄 फिर से शुरू करें"
+          ? "🔄 पुनः आरंभ"
           : "🔄 Start Again",
       },
     ]
@@ -991,10 +1148,8 @@ if (isStartMessage) {
       return;
     }
 
-    // ======================================
-    // Language - Hindi
-    // ======================================
-
+    // ================================Language - Hindi======================================
+ 
     if (
       session.currentStep ===
         "welcome" &&
@@ -1018,10 +1173,11 @@ if (isStartMessage) {
         }
       );
 
-      await sendHomeScreen(
-        from,
-        "hindi"
-      );
+     await sendHomeScreen(
+  from,
+  "hindi",
+  customerName
+);
 
       return;
     }
@@ -1055,7 +1211,8 @@ if (isStartMessage) {
 
       await sendHomeScreen(
         from,
-        "english"
+        "english",
+        customerName
       );
 
       return;
@@ -1093,46 +1250,41 @@ if (isStartMessage) {
       return;
     }
 
-    // ======================================
-    // Home - Contact Us
-    // ======================================
+ // ===============================Home - Contact Us / Share Business Contact =============================
 
-    if (
-      session.currentStep ===
-        "home" &&
-      buttonId ===
-        "HOME_CONTACT_US"
-    ) {
-      const contactMessage =
-        session.language ===
-        "hindi"
+if (session.currentStep === "home" &&
+  buttonId === "HOME_CONTACT_US"
+) {
+  const isHindi = session.language === "hindi";
 
-          ? "📞 हमसे संपर्क करने के लिए कृपया Stay Lansdowne टीम से संपर्क करें।"
+  // Send Stay Lansdowne business contact card
+  await sendWhatsAppContact(from);
 
-          : "📞 Please contact the Stay Lansdowne team for assistance.";
+  const businessPhone = String(
+    process.env.WHATSAPP_BUSINESS_PHONE || ""
+  ).replace(/\D/g, "");
 
-      await sendWhatsAppText(
-        from,
-        contactMessage
-      );
+  const businessShortLink =
+    process.env.WHATSAPP_BUSINESS_SHORT_LINK?.trim() ||
+    `https://wa.me/${businessPhone}`;
 
-      await updateWhatsAppSession(
-        from,
-        {
-          lastMessageId:
-            messageId,
+  const contactMessage = isHindi
+    ? `📞 *DevBhoomi Stay Concierge*\n\nहमारी स्थानीय सहायता टीम आपकी सेवा में उपलब्ध है।\n\nऊपर दिए गए कॉन्टैक्ट कार्ड को सेव करें या सीधे WhatsApp पर चैट करें:\n${businessShortLink}`
+    : `📞 *DevBhoomi Stay Concierge*\n\nOur local Uttarakhand team is here to assist you.\n\nSave our contact card above or chat with us on WhatsApp:\n${businessShortLink}`;
 
-          lastMessageAt:
-            new Date(),
-        }
-      );
+  await sendWhatsAppText(from,contactMessage);
 
-      return;
-    }
+  await updateWhatsAppSession(from, {
+    lastMessageId: messageId,
+    lastMessageAt: new Date(),
+  });
 
-    // ======================================
-    // Home - About Us
-    // ======================================
+  return;
+}
+
+
+
+    // ================================== Home - About Us =====================================
 
     if (
       session.currentStep ===
@@ -1144,9 +1296,9 @@ if (isStartMessage) {
         session.language ===
         "hindi"
 
-          ? "🏔️ Stay Lansdowne आपको आसान और सुविधाजनक hotel booking experience प्रदान करता है।"
+          ? "🏔️ *DevBhoomi Stay के बारे में*\n\nहम लैंसडाउन और कोटद्वार में प्रमाणित, स्वच्छ और प्रकृति के बीच बसे सबसे बेहतरीन होटलों एवं होमस्टे का चयन प्रदान करते हैं। पारदर्शी मूल्य और व्यक्तिगत सहायता हमारी प्राथमिकता है।"
 
-          : "🏔️ Stay Lansdowne provides a simple and convenient hotel booking experience.";
+          : "🏔️ *About DevBhoomi Stay*\n\nWe connect travelers with handpicked, authentic mountain stays and resorts across Lansdowne & Kotdwar. Transparent tariffs, local hospitality, and seamless bookings.";
 
       await sendWhatsAppText(
         from,
@@ -1167,9 +1319,8 @@ if (isStartMessage) {
       return;
     }
 
-    // ======================================
-    // Destination
-    // ======================================
+  
+    // ====================================== Destination ======================================
 
     if (
       session.currentStep ===
@@ -1281,9 +1432,9 @@ if (isStartMessage) {
         session.language ===
           "hindi"
 
-          ? "कृपया check-in date भेजें।\n\nFormat: DD/MM/YYYY"
+          ? "📅 कृपया अपनी चेक-इन तिथि भेजें।\n\nप्रारूप: DD/MM/YYYY (उदा. 15/10/2026)"
 
-          : "Please type your check-in date.\n\nFormat: DD/MM/YYYY"
+          : "📅 Please type your check-in date.\n\nFormat: DD/MM/YYYY (e.g. 15/10/2026)"
       );
 
       await updateWhatsAppSession(
@@ -1323,9 +1474,9 @@ if (isStartMessage) {
           session.language ===
             "hindi"
 
-            ? "कृपया सही date भेजें।\n\nउदाहरण: 15/10/2027"
+            ? "⚠️ कृपया सही दिनांक दर्ज करें।\n\nप्रारूप: DD/MM/YYYY (उदा. 15/10/2026)"
 
-            : "Please enter a valid date.\n\nExample: 15/10/2027"
+            : "⚠️ Please enter a valid date.\n\nFormat: DD/MM/YYYY (e.g. 15/10/2026)"
         );
 
         return;
@@ -1351,9 +1502,9 @@ if (isStartMessage) {
           session.language ===
             "hindi"
 
-            ? "Check-in date past में नहीं हो सकती।"
+            ? "⚠️ चेक-इन तिथि आज या भविष्य की होनी चाहिए।"
 
-            : "Check-in date cannot be in the past."
+            : "⚠️ Check-in date cannot be in the past."
         );
 
         return;
@@ -1451,9 +1602,9 @@ if (isStartMessage) {
         session.language ===
           "hindi"
 
-          ? "कृपया check-out date भेजें।\n\nFormat: DD/MM/YYYY"
+          ? "📅 कृपया अपनी चेक-आउट तिथि भेजें।\n\nप्रारूप: DD/MM/YYYY (उदा. 16/10/2026)"
 
-          : "Please type your check-out date.\n\nFormat: DD/MM/YYYY"
+          : "📅 Please type your check-out date.\n\nFormat: DD/MM/YYYY (e.g. 16/10/2026)"
       );
 
       await updateWhatsAppSession(
@@ -1493,9 +1644,9 @@ if (isStartMessage) {
           session.language ===
             "hindi"
 
-            ? "कृपया सही date भेजें।\n\nउदाहरण: 20/10/2027"
+            ? "⚠️ कृपया सही दिनांक दर्ज करें।\n\nप्रारूप: DD/MM/YYYY (उदा. 16/10/2026)"
 
-            : "Please enter a valid date.\n\nExample: 20/10/2027"
+            : "⚠️ Please enter a valid date.\n\nFormat: DD/MM/YYYY (e.g. 16/10/2026)"
         );
 
         return;
@@ -1508,9 +1659,9 @@ if (isStartMessage) {
           session.language ===
             "hindi"
 
-            ? "पहले check-in date चुनें।"
+            ? "⚠️ पहले चेक-इन तिथि चुनें।"
 
-            : "Please select your check-in date first."
+            : "⚠️ Please select your check-in date first."
         );
 
         return;
@@ -1534,9 +1685,9 @@ if (isStartMessage) {
           session.language ===
             "hindi"
 
-            ? "Check-out date, check-in date के बाद होनी चाहिए।"
+            ? "⚠️ चेक-आउट की तिथि, चेक-इन तिथि के बाद की होनी चाहिए।"
 
-            : "Check-out date must be after check-in date."
+            : "⚠️ Check-out date must be after check-in date."
         );
 
         return;
@@ -1768,12 +1919,7 @@ if (isStartMessage) {
       return;
     }
 
-
-
-
-// ======================================
-// Hotel Type Selection
-// ======================================
+// ================================Hotel Type Selection ======================================
 
 if (
   session.currentStep === "hotel_type" &&
@@ -1801,11 +1947,14 @@ if (
     lastMessageAt: new Date(),
   });
 
-  // Show searching message
+  // Show searching message (exact reference design)
   await sendSearchingHotelsScreen(
     from,
     session.language
   );
+
+  // Natural pause so user perceives the live hotel search
+  await new Promise((resolve) => setTimeout(resolve, 1200));
 
   // Get updated session
   const updatedSession =
@@ -1840,116 +1989,155 @@ if (
 
 // ======================================
 // Open Hotel Selection Flow
+// With Interactive List Fallback
 // ======================================
 
 if (
-  session.currentStep ===
-    "hotels_found" &&
-  buttonId ===
-    "OPEN_HOTEL_SELECTION"
+  session.currentStep === "hotels_found" &&
+  buttonId === "OPEN_HOTEL_SELECTION"
 ) {
+  // Important: declare outside try so catch can access it
+  let hotels = [];
+
+  const isHindi = session.language === "hindi";
+
   try {
-    // Re-check live hotel availability
+    // Get the latest customer session
     const updatedSession =
       await getOrCreateWhatsAppSession(
         from,
         customerName
       );
 
-    const hotels =
-      await searchAvailableHotels(
-        updatedSession
-      );
+    // Search available hotels
+    hotels = await searchAvailableHotels(
+      updatedSession
+    );
 
     if (
-      !hotels ||
+      !Array.isArray(hotels) ||
       hotels.length === 0
     ) {
-      await updateWhatsAppSession(
-        from,
-        {
-          currentStep:
-            "hotel_type",
-
-          lastMessageId:
-            messageId,
-
-          lastMessageAt:
-            new Date(),
-        }
-      );
+      await updateWhatsAppSession(from, {
+        currentStep: "hotel_type",
+        lastMessageId: messageId,
+        lastMessageAt: new Date(),
+      });
 
       await sendWhatsAppText(
         from,
-
-        session.language ===
-          "hindi"
-          ? "😔 Abhi koi hotel available nahi hai. Please dobara search karein."
+        isHindi
+          ? "😔 अभी कोई होटल उपलब्ध नहीं है। कृपया दोबारा सर्च करें।"
           : "😔 No hotels are currently available. Please search again."
       );
 
       return;
     }
 
+    // Try opening the WhatsApp Flow first
     const flowToken =
       `HOTEL_SELECT_${from}_${Date.now()}`;
 
-    await sendWhatsAppFlow(
-      from,
-      {
-        flowId:
-          HOTEL_SELECTION_FLOW_ID,
+    await sendWhatsAppFlow(from, {
+      flowId: HOTEL_SELECTION_FLOW_ID,
+      flowToken,
 
-        flowToken,
+      bodyText: isHindi
+        ? "अपना पसंदीदा होटल चुनें।"
+        : "Choose your preferred hotel.",
 
-        bodyText:
-          session.language ===
-          "hindi"
-            ? "Apna hotel select karein."
-            : "Choose a hotel to continue your booking.",
+      headerText: "Stay Lansdowne",
 
-        headerText:
-          "Stay Lansdowne",
+      footerText: "Select your preferred hotel",
 
-        footerText:
-          "Select your preferred hotel",
+      flowCta: isHindi
+        ? "होटल चुनें"
+        : "Select Hotel",
 
-        flowCta:
-          session.language ===
-          "hindi"
-            ? "Hotel चुनें"
-            : "Select Hotel",
+      screen: "HOTEL_SELECTION",
 
-        screen:
-          "HOTEL_SELECTION",
+      hotels,
+    });
 
-        hotels,
-      }
-    );
-
-    console.log(
-      "✅ Hotel Selection Flow sent"
-    );
+    console.log("✅ Hotel Selection Flow sent");
 
     return;
   } catch (error) {
     console.error(
       "Hotel Selection Flow Error:",
-      error
+      error?.message || error
     );
 
+    // If Flow fails, show a normal WhatsApp list instead
+    const safeHotels = Array.isArray(hotels)
+      ? hotels
+          .filter((hotel) => hotel?.hotelId)
+          .slice(0, 10)
+      : [];
+
+    if (safeHotels.length > 0) {
+      try {
+        const hotelRows = safeHotels.map((hotel) => ({
+          id: `HOTEL_${String(hotel.hotelId)}`,
+
+          title: String(
+            hotel.hotelName || "Hotel"
+          ).slice(0, 24),
+
+          description:
+            hotel.startingPrice != null
+              ? `From ₹${hotel.startingPrice}/night`.slice(0, 72)
+              : "Select to view hotel details",
+        }));
+
+        await sendWhatsAppList(
+          from,
+
+          isHindi
+            ? `✨ ${hotelRows.length} होटल उपलब्ध हैं। अपना होटल चुनें।`
+            : `✨ ${hotelRows.length} hotel(s) available. Choose your hotel.`,
+
+          isHindi
+            ? "होटल चुनें"
+            : "Select Hotel",
+
+          [
+            {
+              title: isHindi
+                ? "उपलब्ध होटल"
+                : "Available Hotels",
+
+              rows: hotelRows,
+            },
+          ]
+        );
+
+        console.log(
+          "✅ Hotel list fallback sent successfully"
+        );
+
+        return;
+      } catch (fallbackError) {
+        console.error(
+          "Hotel list fallback error:",
+          fallbackError?.message || fallbackError
+        );
+      }
+    }
+
+    // Final fallback if neither Flow nor list works
     await sendWhatsAppText(
       from,
 
-      session.language ===
-        "hindi"
-        ? "😔 Hotel selection open nahi ho paaya. Please try again."
-        : "😔 Unable to open hotel selection. Please try again."
+      isHindi
+        ? "😔 होटल की सूची अभी नहीं खुल पाई। कृपया थोड़ी देर बाद दोबारा कोशिश करें।"
+        : "😔 Hotel selection could not be opened. Please try again shortly."
     );
 
     return;
   }
 }
+
 
 // ======================================
 // Hotel Selection
@@ -1978,9 +2166,19 @@ const listSelectedHotelId =
       )
     : null;
 
+const buttonSelectedHotelId =
+  buttonId &&
+  buttonId.startsWith("HOTEL_")
+    ? buttonId.replace(
+        "HOTEL_",
+        ""
+      )
+    : null;
+
 const selectedHotelId =
   flowSelectedHotelId ||
-  listSelectedHotelId;
+  listSelectedHotelId ||
+  buttonSelectedHotelId;
 
 if (
   session.currentStep ===
@@ -2005,10 +2203,11 @@ if (
       await sendWhatsAppText(
         from,
         session.language === "hindi"
-          ? "😔 Selected hotel ab available nahi hai."
-          : "😔 The selected hotel is no longer available."
+          ? "⚠️ चुना गया होटल अब उपलब्ध नहीं है।"
+          : "⚠️ The selected hotel is no longer available."
       );
-      // ======================================
+
+// ======================================
 // Verify Hotel Is Still In Search Result
 // ======================================
 
@@ -2030,8 +2229,8 @@ if (!stillAvailable) {
 
     session.language ===
       "hindi"
-      ? "😔 Selected hotel ab aapke selected dates/filters ke according available nahi hai."
-      : "😔 The selected hotel is no longer available for your selected dates and filters."
+      ? "⚠️ यह होटल अब इन तिथियों या फ़िल्टर के लिए उपलब्ध नहीं है।"
+      : "⚠️ The selected hotel is no longer available for your selected dates and filters."
   );
 
   return;
@@ -2085,8 +2284,8 @@ if (!stillAvailable) {
       await sendWhatsAppText(
         from,
         session.language === "hindi"
-          ? "😔 Is hotel mein selected guests ke liye koi suitable room available nahi hai."
-          : "😔 No suitable room is currently available for the selected number of guests."
+          ? "⚠️ चुने गए अतिथियों की संख्या के लिए इस होटल में उपयुक्त कमरा उपलब्ध नहीं है।"
+          : "⚠️ No suitable room is currently available for the selected number of guests."
       );
 
       return;
@@ -2135,50 +2334,59 @@ if (!stillAvailable) {
     );
 
     // ======================================
-    // HOTEL DETAILS
+    // HOTEL DETAILS (Screen 12)
     // ======================================
 
     const isHindi =
       session.language === "hindi";
 
-    const detailsMessage =
-      isHindi
-        ? `🏨 ${hotel.hotelName}
+    const hotelImage = toWhatsAppJpgUrl(
+      hotel.coverImage ||
+      (Array.isArray(hotel.images) && hotel.images[0]) ||
+      null
+    );
 
-📍 ${hotel.city}, ${hotel.state}
+    const stars = "⭐".repeat(hotel.starRating || 4);
 
-🛏️ Room: ${
-            suitableRoom.roomCategory.name
-          }
+    // Fetch real room pricing from database
+    const roomPrice =
+      (await getRoomNightPrice(
+        hotel,
+        suitableRoom._id,
+        session.checkIn
+      )) ||
+      Number(suitableRoom.pricePerNight) ||
+      Number(hotel.startingPrice) ||
+      3000;
 
-👥 Capacity: ${
-            suitableRoom.roomCategory.maxGuests
-          } Guests
+    const address =
+      hotel.address?.trim() ||
+      `${hotel.city || "Lansdowne"}, ${hotel.state || "Uttarakhand"}`;
 
-📞 ${hotel.phone}
+    // Get real amenities from hotel or room category in DB
+    const rawAmenities =
+      Array.isArray(hotel.amenities) && hotel.amenities.length > 0
+        ? hotel.amenities
+        : (Array.isArray(suitableRoom.roomCategory?.amenities) && suitableRoom.roomCategory.amenities.length > 0
+            ? suitableRoom.roomCategory.amenities
+            : ["WiFi", "Parking"]);
 
-${
-  hotel.description ||
-  "Comfortable stay at a convenient location."
-}`
-        : `🏨 ${hotel.hotelName}
+    const amenityLines = [];
+    for (let i = 0; i < rawAmenities.length; i += 2) {
+      const first = `✔ ${rawAmenities[i]}`;
+      const second = rawAmenities[i + 1] ? `   ✔ ${rawAmenities[i + 1]}` : "";
+      amenityLines.push(`${first}${second}`);
+      if (amenityLines.length >= 3) break;
+    }
+    const amenitiesText = amenityLines.join("\n");
 
-📍 ${hotel.city}, ${hotel.state}
+    const detailsMessage = isHindi
+      ? `*${hotel.hotelName}*\n${stars}\n\n📍 ${address}\n💰 ₹${roomPrice} / Night\n\n${amenitiesText}`
+      : `*${hotel.hotelName}*\n${stars}\n\n📍 ${address}\n💰 ₹${roomPrice} / Night\n\n${amenitiesText}`;
 
-🛏️ Room: ${
-            suitableRoom.roomCategory.name
-          }
-
-👥 Capacity: ${
-            suitableRoom.roomCategory.maxGuests
-          } Guests
-
-📞 ${hotel.phone}
-
-${
-  hotel.description ||
-  "Comfortable stay at a convenient location."
-}`;
+    const buttonOptions = hotelImage
+      ? { headerImageUrl: hotelImage }
+      : {};
 
     await sendWhatsAppButtons(
       from,
@@ -2186,26 +2394,18 @@ ${
       [
         {
           id: "HOTEL_PHOTOS",
-          title:
-            isHindi
-              ? "📸 Photos"
-              : "📸 Photos",
+          title: "📸 Photos",
         },
         {
           id: "HOTEL_LOCATION",
-          title:
-            isHindi
-              ? "📍 Location"
-              : "📍 Location",
+          title: "📍 Location",
         },
         {
           id: "HOTEL_CONTINUE",
-          title:
-            isHindi
-              ? "➡️ Continue"
-              : "➡️ Continue",
+          title: "✅ Book Now",
         },
-      ]
+      ],
+      buttonOptions
     );
 
     return;
@@ -2217,7 +2417,7 @@ ${
 
     await sendWhatsAppText(
       from,
-      "😔 Unable to select hotel at the moment. Please try again."
+      "⚠️ Unable to select hotel at the moment. Please try again."
     );
 
     return;
@@ -2226,11 +2426,13 @@ ${
 
 
 // ======================================
-// Hotel Photos
+// Hotel Photos (Screen 13)
 // ======================================
 
 if (
-  session.currentStep === "hotel_details" &&
+  (session.currentStep === "hotel_details" ||
+    session.currentStep === "hotel_photos" ||
+    session.currentStep === "hotel_location") &&
   buttonId === "HOTEL_PHOTOS"
 ) {
   try {
@@ -2241,7 +2443,7 @@ if (
     if (!hotel) {
       await sendWhatsAppText(
         from,
-        "😔 Hotel details not found."
+        "⚠️ Hotel details not found."
       );
       return;
     }
@@ -2252,24 +2454,42 @@ if (
       lastMessageAt: new Date(),
     });
 
-    if (
-      hotel.images &&
-      hotel.images.length > 0
-    ) {
-      await sendWhatsAppText(
-        from,
-        `📸 ${hotel.hotelName}\n\nHotel photos are available.`
-      );
-    } else {
-      await sendWhatsAppText(
-        from,
-        `📸 ${hotel.hotelName}\n\nCurrently no hotel photos are available.`
-      );
+    const photoUrls = [];
+    // Only send hotel gallery images if available, without duplicating coverImage
+    if (Array.isArray(hotel.images) && hotel.images.length > 0) {
+      hotel.images.forEach((img) => {
+        const jpg = toWhatsAppJpgUrl(img);
+        if (jpg && !photoUrls.includes(jpg)) {
+          photoUrls.push(jpg);
+        }
+      });
+    } else if (hotel.coverImage) {
+      // Fallback to cover image only if hotel has no gallery images
+      const covJpg = toWhatsAppJpgUrl(hotel.coverImage);
+      if (covJpg) photoUrls.push(covJpg);
+    }
+
+    await sendWhatsAppText(
+      from,
+      `📸 *${hotel.hotelName}*`
+    );
+
+    const photosToSend = photoUrls.slice(0, 5);
+    for (let i = 0; i < photosToSend.length; i++) {
+      try {
+        await sendWhatsAppImage(
+          from,
+          photosToSend[i],
+          `Photo ${i + 1} of ${photosToSend.length}`
+        );
+      } catch (imgErr) {
+        console.error("Error sending hotel photo:", imgErr?.message || imgErr);
+      }
     }
 
     await sendWhatsAppButtons(
       from,
-      "What would you like to see next?",
+      `*${hotel.hotelName}*\n\nTap below to check location or proceed to book:`,
       [
         {
           id: "HOTEL_LOCATION",
@@ -2277,7 +2497,7 @@ if (
         },
         {
           id: "HOTEL_CONTINUE",
-          title: "➡️ Continue",
+          title: "✅ Book Now",
         },
       ]
     );
@@ -2291,7 +2511,7 @@ if (
 
     await sendWhatsAppText(
       from,
-      "😔 Unable to load hotel photos."
+      "⚠️ Unable to load hotel photos."
     );
 
     return;
@@ -2300,11 +2520,13 @@ if (
 
 
 // ======================================
-// Hotel Location
+// Hotel Location (Screen 14)
 // ======================================
 
 if (
-  session.currentStep === "hotel_details" &&
+  (session.currentStep === "hotel_details" ||
+    session.currentStep === "hotel_photos" ||
+    session.currentStep === "hotel_location") &&
   buttonId === "HOTEL_LOCATION"
 ) {
   try {
@@ -2315,7 +2537,7 @@ if (
     if (!hotel) {
       await sendWhatsAppText(
         from,
-        "😔 Hotel location not found."
+        "⚠️ Hotel location not found."
       );
       return;
     }
@@ -2326,26 +2548,45 @@ if (
       lastMessageAt: new Date(),
     });
 
-    const locationMessage = `
-📍 ${hotel.hotelName}
+    const mapImageUrl =
+      process.env.WHATSAPP_MAP_IMAGE_URL?.trim() ||
+      "https://res.cloudinary.com/dszadvuz6/image/upload/v1792842848/stay_lansdowne/hotel_location_map.jpg";
 
-${hotel.address}
-
-${hotel.city}, ${hotel.state}, ${hotel.country}
-`;
-
-    await sendWhatsAppText(
-      from,
-      locationMessage.trim()
+    const mapsQuery = encodeURIComponent(
+      `${hotel.hotelName}, ${hotel.address || hotel.city || "Lansdowne"}, Uttarakhand`
     );
+    const googleMapsUrl = `https://maps.google.com/?q=${mapsQuery}`;
+
+    // 1. Send Map Image Preview (Screen 14)
+    if (mapImageUrl) {
+      try {
+        await sendWhatsAppImage(
+          from,
+          mapImageUrl,
+          "📍 Hotel Location"
+        );
+      } catch (mapImgErr) {
+        console.error("Map image error:", mapImgErr?.message || mapImgErr);
+      }
+    }
+
+    // 2. Send location details with clickable Google Maps URL and Action Buttons
+    const isHindi = session.language === "hindi";
+    const locationBody = isHindi
+      ? `📍 *होटल लोकेशन (Hotel Location)*\n━━━━━━━━━━━━━━━━━━━\n🏨 *${hotel.hotelName}*\n🏠 ${hotel.address || "Lansdowne, Uttarakhand"}\n\n🗺️ *Google Maps पर खोलें:*\n${googleMapsUrl}`
+      : `📍 *Hotel Location*\n━━━━━━━━━━━━━━━━━━━\n🏨 *${hotel.hotelName}*\n🏠 ${hotel.address || "Lansdowne, Uttarakhand"}\n\n🗺️ *Open in Google Maps:*\n${googleMapsUrl}`;
 
     await sendWhatsAppButtons(
       from,
-      "Ready to continue with your booking?",
+      locationBody,
       [
         {
+          id: "HOTEL_PHOTOS",
+          title: "📸 Photos",
+        },
+        {
           id: "HOTEL_CONTINUE",
-          title: "➡️ Continue",
+          title: "✅ Book Now",
         },
       ]
     );
@@ -2359,7 +2600,7 @@ ${hotel.city}, ${hotel.state}, ${hotel.country}
 
     await sendWhatsAppText(
       from,
-      "😔 Unable to load hotel location."
+      "⚠️ Unable to load hotel location."
     );
 
     return;
@@ -2368,7 +2609,7 @@ ${hotel.city}, ${hotel.state}, ${hotel.country}
 
 
 // ======================================
-// Hotel Continue
+// Hotel Continue -> Enter Name (Screen 15)
 // ======================================
 
 if (
@@ -2387,9 +2628,7 @@ if (
 
   await sendWhatsAppText(
     from,
-    session.language === "hindi"
-      ? "कृपया अपना पूरा नाम भेजें।"
-      : "Please enter your full name."
+    "Please Enter Your Name"
   );
 
   return;
@@ -2397,7 +2636,7 @@ if (
 
 
 // ======================================
-// Enter Guest Name
+// Enter Guest Name -> Share Contact Prompt (Screen 16)
 // ======================================
 
 if (
@@ -2412,8 +2651,8 @@ if (
     await sendWhatsAppText(
       from,
       session.language === "hindi"
-        ? "कृपया अपना सही पूरा नाम भेजें।"
-        : "Please enter a valid full name."
+        ? "⚠️ कृपया अपना वैध नाम दर्ज करें।"
+        : "⚠️ Please enter a valid name."
     );
 
     return;
@@ -2426,27 +2665,40 @@ if (
     lastMessageAt: new Date(),
   });
 
-  await sendWhatsAppText(
+  const promptText = `📱 *Please Share Your Contact Number*\n\nWe will use this number for booking updates.`;
+
+  await sendWhatsAppButtons(
     from,
-    session.language === "hindi"
-      ? "📱 कृपया अपना contact number भेजें।"
-      : "📱 Please share your contact number."
+    promptText,
+    [
+      {
+        id: "SHARE_CURRENT_PHONE",
+        title: "📱 Share Contact",
+      },
+    ]
   );
 
   return;
 }
 
 // ======================================
-// Share Contact / Contact Number
+// Share Contact / Contact Number Received
+// Supports:
+// 1. Button click: SHARE_CURRENT_PHONE
+// 2. Typing 10-digit number as text
 // ======================================
 
 if (
   session.currentStep === "share_contact" &&
-  text &&
-  !buttonId &&
-  !listId
+  (buttonId === "SHARE_CURRENT_PHONE" || (text && !buttonId && !listId))
 ) {
-  const contactNumber = text.replace(/\D/g, "");
+  let contactNumber = "";
+
+  if (buttonId === "SHARE_CURRENT_PHONE") {
+    contactNumber = from.replace(/\D/g, "").slice(-10);
+  } else {
+    contactNumber = text.replace(/\D/g, "");
+  }
 
   if (
     contactNumber.length < 10 ||
@@ -2455,8 +2707,8 @@ if (
     await sendWhatsAppText(
       from,
       session.language === "hindi"
-        ? "कृपया valid contact number भेजें।"
-        : "Please enter a valid contact number."
+        ? "⚠️ कृपया सही 10 अंकों का मोबाइल नंबर भेजें।"
+        : "⚠️ Please enter a valid 10-digit mobile number."
     );
 
     return;
@@ -2494,8 +2746,8 @@ if (
     await sendWhatsAppText(
       from,
       updatedSession.language === "hindi"
-        ? "😔 Selected hotel ab available nahi hai. Please booking dobara try karein."
-        : "😔 The selected hotel is no longer available. Please try the booking again."
+        ? "⚠️ चुना गया होटल अब उपलब्ध नहीं है। कृपया पुनः प्रयास करें।"
+        : "⚠️ The selected hotel is no longer available. Please try the booking again."
     );
 
     return;
@@ -2530,31 +2782,19 @@ if (
   await sendWhatsAppButtons(
     from,
     isHindi
-      ? `✅ आपकी booking details confirm हो गई हैं।
-
-अब आपको advance payment करना होगा।
-
-💰 Total Amount: ₹${session.bookingAmount}
-
-क्या आप payment करना चाहते हैं?`
-      : `✅ Your booking details have been confirmed.
-
-An advance payment is required to continue.
-
-💰 Total Amount: ₹${session.bookingAmount}
-
-Would you like to proceed with payment?`,
+      ? `✅ *बुकिंग विवरण सत्यापित*\n\nकमरा सुरक्षित करने के लिए टोकन / एडवांस भुगतान आवश्यक है।\n\n💳 *कुल बुकिंग राशि:* ₹${session.bookingAmount}\n\nक्या आप भुगतान के साथ आगे बढ़ना चाहते हैं?`
+      : `✅ *Booking Details Confirmed*\n\nAn advance payment is required to secure your room.\n\n💳 *Total Amount:* ₹${session.bookingAmount}\n\nWould you like to proceed with payment?`,
     [
       {
         id: "PROCEED_PAYMENT",
         title: isHindi
-          ? "💳 Payment करें"
-          : "💳 Proceed to Payment",
+          ? "💳 भुगतान करें"
+          : "💳 Pay Advance",
       },
       {
         id: "RESTART_BOOKING",
         title: isHindi
-          ? "🔄 Start Again"
+          ? "🔄 पुनः आरंभ"
           : "🔄 Start Again",
       },
     ]
@@ -2645,22 +2885,20 @@ if (
     session.language === "hindi";
 
   const paymentMessage = isHindi
-    ? `💳 Advance Payment
-
-💰 Total Booking Amount: ₹${totalAmount}
-
-📌 Advance Required: ${advancePercentage}%
-💵 Pay Now: ₹${advanceAmount}
-
-Payment complete karne ke liye neeche button par click karein.`
-    : `💳 Advance Payment
-
-💰 Total Booking Amount: ₹${totalAmount}
-
-📌 Advance Required: ${advancePercentage}%
-💵 Pay Now: ₹${advanceAmount}
-
-Click the button below to continue with payment.`;
+    ? `💳 *एडवांस भुगतान (Advance Deposit)*
+━━━━━━━━━━━━━━━━━━━
+🏷️ *कुल बुकिंग राशि:* ₹${totalAmount}
+📌 *आवश्यक एडवांस:* ${advancePercentage}%
+💵 *देय राशि:* ₹${advanceAmount}
+━━━━━━━━━━━━━━━━━━━
+भुगतान पूरा करने के लिए नीचे दिए गए बटन पर क्लिक करें:`
+    : `💳 *Advance Deposit*
+━━━━━━━━━━━━━━━━━━━
+🏷️ *Total Booking:* ₹${totalAmount}
+📌 *Advance Required:* ${advancePercentage}%
+💵 *Payable Now:* ₹${advanceAmount}
+━━━━━━━━━━━━━━━━━━━
+Click the button below to continue with payment:`;
 
   await sendWhatsAppButtons(
     from,
@@ -2672,7 +2910,9 @@ Click the button below to continue with payment.`;
       },
       {
         id: "RESTART_BOOKING",
-        title: "🔄 Start Again",
+        title: isHindi
+          ? "🔄 पुनः आरंभ"
+          : "🔄 Start Again",
       },
     ]
   );
@@ -2703,23 +2943,15 @@ if (
     session.language === "hindi";
 
   const paymentMessage = isHindi
-    ? `🔐 Secure Payment
-
-💰 Amount to Pay: ₹${advanceAmount}
-
-कृपया payment method चुनें।`
-    : `🔐 Secure Payment
-
-💰 Amount to Pay: ₹${advanceAmount}
-
-Please choose a payment method.`;
+    ? `🔐 *सुरक्षित भुगतान (Secure Payment)*\n\n💵 *भुगतान योग्य राशि:* ₹${advanceAmount}\n\nकृपया अपनी पसंदीदा भुगतान विधि चुनें:`
+    : `🔐 *Secure Payment*\n\n💵 *Amount to Pay:* ₹${advanceAmount}\n\nPlease choose a payment method:`;
 
 await sendWhatsAppList(
   from,
   paymentMessage,
 
   isHindi
-    ? "Payment चुनें"
+    ? "भुगतान विधि चुनें"
     : "Select Payment",
 
   [
@@ -2728,23 +2960,23 @@ await sendWhatsAppList(
       rows: [
         {
           id: "PAYMENT_RAZORPAY",
-          title: "Razorpay",
-          description: "UPI, Cards, Netbanking",
+          title: "⚡ Razorpay Gateway",
+          description: "UPI, Cards, Netbanking & Wallets",
         },
         {
           id: "PAYMENT_UPI",
-          title: "UPI",
-          description: "Pay using UPI",
+          title: "📱 Instant UPI",
+          description: "GPay, PhonePe, Paytm, BHIM",
         },
         {
           id: "PAYMENT_CARD",
-          title: "Debit / Credit Card",
-          description: "Pay using card",
+          title: "💳 Debit/Credit Card",
+          description: "Visa, Mastercard, RuPay",
         },
         {
           id: "PAYMENT_NETBANKING",
-          title: "Net Banking",
-          description: "Pay using net banking",
+          title: "🏛️ Net Banking",
+          description: "All major Indian banks",
         },
       ],
     },
@@ -2792,7 +3024,7 @@ if (
     session.language === "hindi";
 
   const methodNameMap = {
-    razorpay: "Razorpay",
+    razorpay: "Razorpay Gateway",
     upi: "UPI",
     card: "Debit / Credit Card",
     netbanking: "Net Banking",
@@ -2805,20 +3037,8 @@ if (
     from,
 
     isHindi
-      ? `🔐 Secure Payment
-
-💰 Amount to Pay: ₹${advanceAmount}
-
-💳 Payment Method: ${selectedMethod}
-
-नीचे Pay button पर click करें।`
-      : `🔐 Secure Payment
-
-💰 Amount to Pay: ₹${advanceAmount}
-
-💳 Payment Method: ${selectedMethod}
-
-Click the Pay button below to continue.`,
+      ? `🔐 *सुरक्षित चेकआउट*\n━━━━━━━━━━━━━━━━━━━\n💵 *राशि:* ₹${advanceAmount}\n💳 *माध्यम:* ${selectedMethod}\n━━━━━━━━━━━━━━━━━━━\nनीचे दिए गए बटन पर क्लिक करके भुगतान करें:`
+      : `🔐 *Secure Checkout*\n━━━━━━━━━━━━━━━━━━━\n💵 *Amount:* ₹${advanceAmount}\n💳 *Method:* ${selectedMethod}\n━━━━━━━━━━━━━━━━━━━\nClick the button below to continue:`,
 
     [
       {
@@ -2827,7 +3047,9 @@ Click the Pay button below to continue.`,
       },
       {
         id: "RESTART_BOOKING",
-        title: "🔄 Start Again",
+        title: isHindi
+          ? "🔄 पुनः आरंभ"
+          : "🔄 Start Again",
       },
     ]
   );
@@ -2984,24 +3206,24 @@ if (
 
     const paymentLinkMessage =
       isHindi
-        ? `🔐 Razorpay Payment
+        ? `🔐 *Razorpay सिक्योर पेमेंट लिंक*
+━━━━━━━━━━━━━━━━━━━
+💵 *भुगतान राशि:* ₹${advanceAmount}
+━━━━━━━━━━━━━━━━━━━
+नीचे दिए गए सुरक्षित लिंक पर क्लिक करके भुगतान पूरा करें:
 
-💰 Amount to Pay: ₹${advanceAmount}
+🔗 ${paymentLink.short_url}
 
-नीचे दिए गए secure payment link पर click करके payment complete करें:
-
-${paymentLink.short_url}
-
-✅ Payment complete होने के बाद आपको WhatsApp पर confirmation मिल जाएगा।`
-        : `🔐 Razorpay Payment
-
-💰 Amount to Pay: ₹${advanceAmount}
-
+✅ *भुगतान पूरा होते ही आपको WhatsApp पर पुष्टि एवं वाउचर मिल जाएगा।*`
+        : `🔐 *Secure Payment Link*
+━━━━━━━━━━━━━━━━━━━
+💵 *Amount to Pay:* ₹${advanceAmount}
+━━━━━━━━━━━━━━━━━━━
 Please complete your payment using the secure Razorpay link below:
 
-${paymentLink.short_url}
+🔗 ${paymentLink.short_url}
 
-✅ After successful payment, you will receive confirmation on WhatsApp.`;
+✅ *Upon successful payment, your booking voucher will be sent right here.*`;
 
     await sendWhatsAppText(
       from,
@@ -3048,6 +3270,9 @@ if (
       "📄 DOWNLOAD_VOUCHER HANDLER HIT"
     );
 
+    const isHindi =
+      session?.language === "hindi";
+
     const whatsappPayment =
       await WhatsAppPayment.findOne({
         phoneNumber: from,
@@ -3061,11 +3286,36 @@ if (
     if (!whatsappPayment) {
       await sendWhatsAppText(
         from,
-        "❌ Booking payment record nahi mila. Please contact support."
+        isHindi
+          ? "⚠️ बुकिंग भुगतान रिकॉर्ड नहीं मिला। कृपया सहायता के लिए संपर्क करें।"
+          : "⚠️ Booking payment record not found. Please contact support."
       );
 
       return;
     }
+
+    const thankYouMessage = isHindi
+      ? `✨ *धन्यवाद! DevBhoomi Stay चुनने के लिए आभार।*
+━━━━━━━━━━━━━━━━━━━
+आपकी बुकिंग सफलतापूर्वक दर्ज हो गई है और आपका आधिकारिक वाउचर ऊपर भेज दिया गया है।
+
+हिल्स में आपकी सुखद यात्रा की शुभकामनाएँ! 🏔️`
+      : `✨ *Thank You for Choosing DevBhoomi Stay!*
+━━━━━━━━━━━━━━━━━━━
+Your booking has been confirmed successfully and your official booking voucher has been sent above.
+
+We wish you a wonderful and memorable stay in the hills! 🏔️`;
+
+    const thankYouButtons = [
+      {
+        id: "BOOK_ANOTHER_STAY",
+        title: isHindi ? "🏨 अन्य होटल बुक" : "🏨 Book Again",
+      },
+      {
+        id: "MAIN_MENU",
+        title: "🏠 Main Menu",
+      },
+    ];
 
     // ======================================
     // ALREADY GENERATED
@@ -3086,8 +3336,22 @@ if (
           "Booking_Voucher.pdf",
 
         caption:
-          "📄 Stay Lansdowne Booking Voucher",
+          "📄 Your DevBhoomi Stay Booking Voucher",
       });
+
+      await updateWhatsAppSession(
+        from,
+        {
+          currentStep: "thank_you",
+          lastMessageAt: new Date(),
+        }
+      );
+
+      await sendWhatsAppButtons(
+        from,
+        thankYouMessage,
+        thankYouButtons
+      );
 
       return;
     }
@@ -3180,7 +3444,7 @@ if (
         voucher.fileName,
 
       caption:
-        "📄 Your Stay Lansdowne Booking Voucher",
+        "📄 Your DevBhoomi Stay Booking Voucher",
     });
 
     console.log(
@@ -3204,30 +3468,8 @@ if (
 
     await sendWhatsAppButtons(
       from,
-
-      `❤️ Thank You!
-
-We look forward to hosting you at Stay Lansdowne.
-
-Have a great day!`,
-
-      [
-        {
-          id:
-            "BOOK_ANOTHER_STAY",
-
-          title:
-            "🏨 Book Another Stay",
-        },
-
-        {
-          id:
-            "MAIN_MENU",
-
-          title:
-            "🏠 Main Menu",
-        },
-      ]
+      thankYouMessage,
+      thankYouButtons
     );
 
     return;
@@ -3240,7 +3482,7 @@ Have a great day!`,
 
     await sendWhatsAppText(
       from,
-      "❌ Voucher generate nahi ho paaya. Please try again."
+      "⚠️ Unable to send your booking voucher at the moment. Please try again."
     );
 
     return;

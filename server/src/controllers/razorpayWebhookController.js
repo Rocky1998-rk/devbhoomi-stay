@@ -536,60 +536,26 @@ Our team will verify your booking shortly.`
         }
 
      // ======================================
-// SEND BOOKING CONFIRMATION + VOUCHER BUTTON
+// SEND BOOKING CONFIRMATION + VOUCHER BUTTON (Screen 22)
 // ======================================
 
 const isHindi =
   snapshot.language === "hindi";
 
+const bookingCode = `STL${String(
+  confirmedBooking._id
+)
+  .slice(-6)
+  .toUpperCase()}`;
+
 const bookingConfirmationMessage =
   isHindi
-    ? `🎉 Booking Confirmed!
+    ? `🎉 *Booking Confirmed!*\n\nआपकी बुकिंग सफलतापूर्वक दर्ज हो गई है।\n\n*Booking ID*\n*${bookingCode}*\n\nWe have sent the details to your WhatsApp.`
+    : `🎉 *Booking Confirmed!*\n\nYour booking has been confirmed successfully.\n\n*Booking ID*\n*${bookingCode}*\n\nWe have sent the details to your WhatsApp.`;
 
-🏨 आपकी hotel booking successfully confirm हो गई है।
-
-💰 Advance Paid: ₹${whatsappPayment.amount}
-
-🧾 Transaction ID:
-${paymentId || "N/A"}
-
-🔖 Booking ID:
-${confirmedBooking._id}
-
-📅 Check-in:
-${new Date(
-  confirmedBooking.checkIn
-).toLocaleDateString("en-IN")}
-
-📅 Check-out:
-${new Date(
-  confirmedBooking.checkOut
-).toLocaleDateString("en-IN")}
-
-📄 आपका booking voucher ready है।`
-    : `🎉 Booking Confirmed!
-
-🏨 Your hotel booking has been confirmed successfully.
-
-💰 Advance Paid: ₹${whatsappPayment.amount}
-
-🧾 Transaction ID:
-${paymentId || "N/A"}
-
-🔖 Booking ID:
-${confirmedBooking._id}
-
-📅 Check-in:
-${new Date(
-  confirmedBooking.checkIn
-).toLocaleDateString("en-IN")}
-
-📅 Check-out:
-${new Date(
-  confirmedBooking.checkOut
-).toLocaleDateString("en-IN")}
-
-📄 Your booking voucher is ready.`;
+const confirmationBannerUrl =
+  process.env.WHATSAPP_BOOKING_CONFIRMED_IMAGE_URL?.trim() ||
+  "https://res.cloudinary.com/dszadvuz6/image/upload/v1792846187/stay_lansdowne/booking_confirmed_banner.jpg";
 
 await sendWhatsAppButtons(
   whatsappPayment.phoneNumber,
@@ -603,7 +569,10 @@ await sendWhatsAppButtons(
       id: "MAIN_MENU",
       title: "🏠 Main Menu",
     },
-  ]
+  ],
+  confirmationBannerUrl
+    ? { headerImageUrl: confirmationBannerUrl }
+    : {}
 );
 
 console.log(

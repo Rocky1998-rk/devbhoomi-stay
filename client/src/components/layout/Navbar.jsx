@@ -74,15 +74,15 @@ const Navbar = () => {
           </nav>
 
           {/* Right CTA (Desktop) */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             <a
               href={WHATSAPP_CONFIG.getLink()}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#087F5B] hover:bg-[#066C4D] text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#087F5B] hover:bg-[#066C4D] text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
               aria-label="Book a hotel stay on WhatsApp"
             >
-              <FiMessageCircle className="text-lg text-emerald-100" />
+              <FiMessageCircle className="text-base text-emerald-100" />
               <span>Book on WhatsApp</span>
             </a>
           </div>

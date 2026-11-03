@@ -282,11 +282,11 @@ export const generateBookingVoucher = async (
           .fontSize(11)
           .font("Helvetica")
           .text(
-            `Price Per Night: ₹${booking.pricePerNight}`
+            `Price Per Night: Rs. ${booking.pricePerNight}`
           );
 
         doc.text(
-          `Total Room Amount: ₹${booking.totalRoomPrice}`
+          `Total Room Amount: Rs. ${booking.totalRoomPrice}`
         );
 
         doc.moveDown(0.5);
@@ -327,7 +327,7 @@ export const generateBookingVoucher = async (
                 .text(
                   `${formatDate(
                     item.date
-                  )} - ₹${
+                  )} - Rs. ${
                     item.pricePerNight
                   } / night`
                 );

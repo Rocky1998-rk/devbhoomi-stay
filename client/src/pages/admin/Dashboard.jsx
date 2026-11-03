@@ -1,30 +1,55 @@
-import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import HimalayanGreetingBanner from "../../components/admin/HimalayanGreetingBanner";
+import RevenueOverview from "../../components/admin/RevenueOverview";
+import BookingStatusChart from "../../components/admin/BookingStatusChart";
+import WhatsAppFunnel from "../../components/admin/WhatsAppFunnel";
+import TodaysArrivalsTable from "../../components/admin/TodaysArrivalsTable";
+import RecentBookingsTable from "../../components/admin/RecentBookingsTable";
+import BookingDetailsModal from "../../components/admin/BookingDetailsModal";
 
 const Dashboard = () => {
-  const { login, logout, isAuthenticated } = useAuth();
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   return (
-    <>
-      <h1>Admin Dashboard</h1>
+    <div className="font-['Inter']">
+      {/* 1. Hero Panoramic Banner with Greeting & Overlapping KPI Cards */}
+      <HimalayanGreetingBanner />
 
-      <h2>{isAuthenticated ? "Logged In" : "Not Logged In"}</h2>
+      {/* 2. Main Analytics & Tables Container (Aligned with Cards) */}
+      <div className="px-2 sm:px-2.5 lg:px-2 mt-5 space-y-5 md:space-y-6">
+        {/* Three-Panel Analytics Row */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+          {/* Revenue Overview (Bar Chart) */}
+          <div className="md:col-span-12 xl:col-span-6">
+            <RevenueOverview />
+          </div>
 
-      <button
-        onClick={() =>
-          login(
-            {
-              name: "Rocky",
-              role: "admin",
-            },
-            "demo-token"
-          )
-        }
-      >
-        Login
-      </button>
+          {/* Booking Status (Donut Chart) */}
+          <div className="md:col-span-6 xl:col-span-3">
+            <BookingStatusChart />
+          </div>
 
-      <button onClick={logout}>Logout</button>
-    </>
+          {/* WhatsApp Funnel (Stages) */}
+          <div className="md:col-span-6 xl:col-span-3">
+            <WhatsAppFunnel />
+          </div>
+        </div>
+
+        {/* Operational Tables (Today's Arrivals & Recent Bookings - Full Width Horizontal Layout) */}
+        <div className="space-y-5 md:space-y-6">
+          <TodaysArrivalsTable onSelectBooking={setSelectedBooking} />
+          <RecentBookingsTable onSelectBooking={setSelectedBooking} />
+        </div>
+      </div>
+
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <BookingDetailsModal
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+        />
+      )}
+    </div>
   );
 };
 

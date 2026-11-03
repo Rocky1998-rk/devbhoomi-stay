@@ -30,9 +30,23 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5176",
+];
+
 app.use(
-  cors({ origin: "http://localhost:5174",
-        credentials: true,
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:[0-9]+$/.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
   })
 );
 

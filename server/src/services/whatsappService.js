@@ -386,14 +386,9 @@ const sendWhatsAppRequest = async (payload) => {
 };
 
 
-// =====================================================
-// Send Text Message
-// =====================================================
+// ================================Send Text Message ====================================================
 
-export const sendWhatsAppText = async (
-  phoneNumber,
-  text
-) => {
+export const sendWhatsAppText = async (phoneNumber,text) => {
   if (!phoneNumber) {
     throw new Error(
       "Phone number is required"
@@ -423,9 +418,84 @@ export const sendWhatsAppText = async (
   });
 };
 
-// ======================================
-// Send WhatsApp Image
-// ======================================
+
+// ==============================Send Shareable Stay Lansdowne Contact Card====================================
+
+export const sendWhatsAppContact = async (recipientPhoneNumber) => {
+  if (!recipientPhoneNumber) {
+    throw new Error("Recipient phone number is required");
+  }
+
+  const businessPhoneDigits = String(
+    process.env.WHATSAPP_BUSINESS_PHONE || ""
+  ).replace(/\D/g, "");
+
+  if (!businessPhoneDigits) {
+    throw new Error(
+      "WHATSAPP_BUSINESS_PHONE is not configured"
+    );
+  }
+
+  const businessShortLink =
+    process.env.WHATSAPP_BUSINESS_SHORT_LINK?.trim() ||
+    `https://wa.me/${businessPhoneDigits}`;
+
+  let parsedLink;
+
+  try {
+    parsedLink = new URL(businessShortLink);
+  } catch {
+    throw new Error(
+      "WHATSAPP_BUSINESS_SHORT_LINK must be a valid URL"
+    );
+  }
+
+  if (parsedLink.protocol !== "https:") {
+    throw new Error(
+      "WHATSAPP_BUSINESS_SHORT_LINK must use HTTPS"
+    );
+  }
+
+  return sendWhatsAppRequest({
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: recipientPhoneNumber,
+    type: "contacts",
+
+    contacts: [
+      {
+        name: {
+          formatted_name: "Stay Lansdowne",
+          first_name: "Stay",
+          last_name: "Lansdowne",
+        },
+
+        org: {
+          company: "Stay Lansdowne",
+          title: "Hotel Booking & Travel Assistance",
+        },
+
+        phones: [
+          {
+            phone: `+${businessPhoneDigits}`,
+            type: "WORK",
+            wa_id: businessPhoneDigits,
+          },
+        ],
+
+        urls: [
+          {
+            url: businessShortLink,
+            type: "WORK",
+          },
+        ],
+      },
+    ],
+  });
+};
+
+
+// =================================== Send WhatsApp Image ====================================
 
 export const sendWhatsAppImage =
   async (
@@ -495,81 +565,138 @@ export const sendWhatsAppImage =
     return data;
   };
 
-// =====================================================
-// Send WhatsApp Reply Buttons
-// =====================================================
+// =======================Send WhatsApp Reply Buttons ===========================================
 
-export const sendWhatsAppButtons =
-  async (
-    phoneNumber,
-    bodyText,
-    buttons
-  ) => {
-    if (!phoneNumber) {
+
+
+export const sendWhatsAppButtons = async (
+  phoneNumber,
+  bodyText,
+  buttons,
+  options = {}
+) => {
+  if (!phoneNumber) {
+    throw new Error("Phone number is required");
+  }
+
+  if (!bodyText) {
+    throw new Error("Message body is required");
+  }
+
+  if (!Array.isArray(buttons) || buttons.length === 0) {
+    throw new Error("At least one button is required");
+  }
+
+  if (buttons.length > 3) {
+    throw new Error(
+      "Use WhatsApp list message for more than 3 options"
+    );
+  }
+
+  const {
+    headerImageUrl,
+    headerText,
+    footerText,
+  } = options;
+
+  if (headerImageUrl && headerText) {
+    throw new Error(
+      "Use either headerImageUrl or headerText, not both"
+    );
+  }
+
+  if (headerImageUrl) {
+    let parsedImageUrl;
+
+    try {
+      parsedImageUrl = new URL(headerImageUrl);
+    } catch {
       throw new Error(
-        "Phone number is required"
+        "WhatsApp button header image must be a valid public HTTPS URL"
       );
     }
 
-    if (!bodyText) {
+    if (parsedImageUrl.protocol !== "https:") {
       throw new Error(
-        "Message body is required"
+        "WhatsApp button header image must use HTTPS"
+      );
+    }
+  }
+
+  if (headerText && headerText.length > 60) {
+    throw new Error(
+      "WhatsApp interactive header text cannot exceed 60 characters"
+    );
+  }
+
+  if (footerText && footerText.length > 60) {
+    throw new Error(
+      "WhatsApp interactive footer text cannot exceed 60 characters"
+    );
+  }
+
+  const formattedButtons = buttons.map((button) => {
+    if (!button?.id || !button?.title) {
+      throw new Error(
+        "Each WhatsApp reply button requires an id and title"
       );
     }
 
-    if (
-      !Array.isArray(buttons) ||
-      buttons.length === 0
-    ) {
-      throw new Error(
-        "At least one button is required"
-      );
-    }
-
-    if (buttons.length > 3) {
-      throw new Error(
-        "Use WhatsApp list message for more than 3 options"
-      );
-    }
-
-    const formattedButtons =
-      buttons.map((button) => ({
-        type: "reply",
-
-        reply: {
-          id: button.id,
-          title: button.title,
-        },
-      }));
-
-    return sendWhatsAppRequest({
-      messaging_product:
-        "whatsapp",
-
-      recipient_type: "individual",
-
-      to: phoneNumber,
-
-      type: "interactive",
-
-      interactive: {
-        type: "button",
-
-        body: {
-          text: bodyText,
-        },
-
-        action: {
-          buttons:
-            formattedButtons,
-        },
+    return {
+      type: "reply",
+      reply: {
+        id: button.id,
+        title: button.title,
       },
-    });
+    };
+  });
+
+  const interactive = {
+    type: "button",
+
+    body: {
+      text: bodyText,
+    },
+
+    action: {
+      buttons: formattedButtons,
+    },
   };
 
-// =====================================================
-// Send WhatsApp List Message
-// =====================================================
+  // Image header support
+  if (headerImageUrl) {
+    interactive.header = {
+      type: "image",
+      image: {
+        link: headerImageUrl,
+      },
+    };
+  } else if (headerText) {
+    interactive.header = {
+      type: "text",
+      text: headerText,
+    };
+  }
+
+  // Optional footer
+  if (footerText) {
+    interactive.footer = {
+      text: footerText,
+    };
+  }
+
+  return sendWhatsAppRequest({
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: phoneNumber,
+    type: "interactive",
+    interactive,
+  });
+};
+
+
+
+// ============================ Send WhatsApp List Message =========================
 
 export const sendWhatsAppList =
   async (
@@ -848,6 +975,8 @@ export const sendWhatsAppFlow =
 
             flow_cta:
               flowCta,
+
+            mode: "draft",
 
             flow_action_payload: {
               screen,
