@@ -1,0 +1,193 @@
+/*
+  DevBhoomi Stay - Owner Dashboard Theme
+  Premium Hospitality + Modern SaaS
+  Usage: import this file into your main.jsx or App.jsx:
+  import './owner-dashboard-theme.css';
+*/
+
+:root {
+  /* Brand / Primary */
+  --primary: #3B6EF5;
+  --primary-hover: #2855D9;
+  --accent: #FFA940;
+  --accent-light: #FFF0D9;
+
+  /* Sidebar */
+  --sidebar-bg: #111C35;
+  --sidebar-secondary: #1B2947;
+  --sidebar-text: #F8FAFC;
+  --sidebar-muted: #B8C4D9;
+  --sidebar-active-start: #FFD18A;
+  --sidebar-active-end: #FFA940;
+  --sidebar-active-text: #17233D;
+
+  /* Surfaces */
+  --page-bg: #F4F6FC;
+  --card-bg: #FFFFFF;
+  --surface-soft: #F8FAFF;
+  --border: #E3E8F2;
+
+  /* Typography */
+  --heading: #17233D;
+  --text-primary: #334155;
+  --text-secondary: #64748B;
+  --text-inverse: #FFFFFF;
+
+  /* Status */
+  --success: #16A36A;
+  --success-bg: #E8F8F0;
+  --warning: #F59E0B;
+  --warning-bg: #FFF5E5;
+  --danger: #EF4444;
+  --danger-bg: #FFF0F0;
+  --info: #3B6EF5;
+  --info-bg: #EFF4FF;
+  --occupied: #EF4444;
+  --available: #16A36A;
+  --locked: #64748B;
+
+  /* Dashboard KPI pastel backgrounds */
+  --kpi-total-bg: #EFF4FF;
+  --kpi-total-icon: #3B6EF5;
+  --kpi-occupied-bg: #EAF5FF;
+  --kpi-occupied-icon: #0284C7;
+  --kpi-available-bg: #E8F8F0;
+  --kpi-available-icon: #16A36A;
+  --kpi-arrivals-bg: #FFF3E5;
+  --kpi-arrivals-icon: #F59E0B;
+  --kpi-departures-bg: #F1EDFF;
+  --kpi-departures-icon: #805AD5;
+  --kpi-collected-bg: #E8F8F0;
+  --kpi-collected-icon: #16A36A;
+  --kpi-dues-bg: #FFF0F0;
+  --kpi-dues-icon: #EF4444;
+
+  /* Charts */
+  --chart-occupancy: #3B6EF5;
+  --chart-revenue: #FF922E;
+  --chart-grid: #E5EAF3;
+
+  /* Shape / elevation */
+  --radius-card: 16px;
+  --radius-button: 10px;
+  --radius-input: 10px;
+  --shadow-card: 0 4px 15px rgba(17, 28, 53, 0.06);
+  --shadow-card-hover: 0 8px 24px rgba(17, 28, 53, 0.10);
+}
+
+/* Base dashboard styles */
+.owner-dashboard {
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: Inter, "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.owner-sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+}
+
+.owner-sidebar__item {
+  color: var(--sidebar-muted);
+  border-radius: var(--radius-button);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.owner-sidebar__item:hover {
+  background: var(--sidebar-secondary);
+  color: var(--text-inverse);
+}
+
+.owner-sidebar__item.is-active {
+  background: linear-gradient(
+    110deg,
+    var(--sidebar-active-start),
+    var(--sidebar-active-end)
+  );
+  color: var(--sidebar-active-text);
+}
+
+.owner-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.owner-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.owner-button-primary {
+  background: var(--primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-button);
+}
+
+.owner-button-primary:hover {
+  background: var(--primary-hover);
+}
+
+.owner-button-accent {
+  background: var(--accent);
+  color: var(--heading);
+  border-radius: var(--radius-button);
+}
+
+.owner-muted {
+  color: var(--text-secondary);
+}
+
+/* Status badges */
+.status-available,
+.status-confirmed,
+.status-completed,
+.status-pending,
+.status-cancelled,
+.status-occupied,
+.status-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-available,
+.status-completed {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.status-confirmed {
+  color: var(--info);
+  background: var(--info-bg);
+}
+
+.status-pending {
+  color: #A16207;
+  background: var(--warning-bg);
+}
+
+.status-cancelled,
+.status-occupied {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.status-locked {
+  color: var(--locked);
+  background: #EEF1F5;
+}
+
+/* Suggested KPI card variants */
+.kpi-total { background: var(--kpi-total-bg); }
+.kpi-occupied { background: var(--kpi-occupied-bg); }
+.kpi-available { background: var(--kpi-available-bg); }
+.kpi-arrivals { background: var(--kpi-arrivals-bg); }
+.kpi-departures { background: var(--kpi-departures-bg); }
+.kpi-collected { background: var(--kpi-collected-bg); }
+.kpi-dues { background: var(--kpi-dues-bg); }

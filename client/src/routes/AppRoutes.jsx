@@ -32,6 +32,16 @@ import AdminSettings from "../pages/admin/Settings";
 
 // Owner Module Pages (All in /pages/owner/)
 import OwnerDashboard from "../pages/owner/Dashboard";
+import OwnerMyHotel from "../pages/owner/MyHotel";
+import OwnerRoomCategories from "../pages/owner/RoomCategories";
+import OwnerRoomsInventory from "../pages/owner/RoomsInventory";
+import OwnerPricingTariffs from "../pages/owner/PricingTariffs";
+import OwnerBookingsGuests from "../pages/owner/BookingsGuests";
+import OwnerCheckInOut from "../pages/owner/CheckInOut";
+import OwnerPayoutsSettlements from "../pages/owner/PayoutsSettlements";
+import OwnerReportsAnalytics from "../pages/owner/ReportsAnalytics";
+import OwnerNotifications from "../pages/owner/Notifications";
+import OwnerSettings from "../pages/owner/Settings";
 import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
@@ -78,6 +88,16 @@ const AppRoutes = () => {
         <Route path="/owner" element={<OwnerLayout />}>
           <Route index element={<OwnerDashboard />} />
           <Route path="dashboard" element={<OwnerDashboard />} />
+          <Route path="hotel" element={<OwnerMyHotel />} />
+          <Route path="room-categories" element={<OwnerRoomCategories />} />
+          <Route path="rooms" element={<OwnerRoomsInventory />} />
+          <Route path="pricing" element={<OwnerPricingTariffs />} />
+          <Route path="bookings" element={<OwnerBookingsGuests />} />
+          <Route path="check-in-out" element={<OwnerCheckInOut />} />
+          <Route path="payouts" element={<OwnerPayoutsSettlements />} />
+          <Route path="reports" element={<OwnerReportsAnalytics />} />
+          <Route path="notifications" element={<OwnerNotifications />} />
+          <Route path="settings" element={<OwnerSettings />} />
         </Route>
       </Route>
 

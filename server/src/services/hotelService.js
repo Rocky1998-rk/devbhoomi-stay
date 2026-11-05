@@ -55,6 +55,21 @@ export const updateHotel = async (hotelId, updateData) => {
     "amenities",
     "checkInTime",
     "checkOutTime",
+    "website",
+    "pincode",
+    "hotelType",
+    "totalRooms",
+    "roomCategories",
+    "guestCapacity",
+    "floors",
+    "rating",
+    "reviewsCount",
+    "policies",
+    "coverImage",
+    "latitude",
+    "longitude",
+    "googleMapsUrl",
+    "isActive",
   ];
 
   const filteredData = {};

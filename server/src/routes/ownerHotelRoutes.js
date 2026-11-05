@@ -7,6 +7,7 @@ import ownerMiddleware from "../middleware/ownerMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
 
 import {
+  createMyHotel,
   getMyHotel,
   updateMyHotel,
   uploadHotelImagesController,
@@ -14,6 +15,17 @@ import {
 
 const router =
   express.Router();
+
+// =========================
+// Get My Hotel
+// =========================
+
+router.post(
+  "/",
+  authMiddleware,
+  ownerMiddleware,
+  createMyHotel
+);
 
 // =========================
 // Get My Hotel

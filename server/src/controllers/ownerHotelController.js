@@ -1,5 +1,6 @@
 import {
   getOwnerHotel,
+  createOwnerHotel,
   updateOwnerHotel,
 } from "../services/ownerHotelService.js";
 
@@ -12,6 +13,31 @@ import {
 // =========================
 // Get Owner's Hotel
 // =========================
+
+// =========================
+// Create Owner's Hotel
+// =========================
+
+export const createMyHotel = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+
+    const hotel = await createOwnerHotel(ownerId, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: "Hotel created successfully",
+      data: hotel,
+    });
+  } catch (error) {
+    console.error("Create Owner Hotel Error:", error.message);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create hotel",
+    });
+  }
+};
 
 export const getMyHotel =
   async (req, res) => {
